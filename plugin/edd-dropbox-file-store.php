@@ -8,22 +8,20 @@ Author: Adam Kreiss
 Author URI: N/A
 */
 
-// Load the EDD license handler only if not already loaded. Must be placed in the main plugin file
-if( ! class_exists( 'EDD_License' ) )
-    include( dirname( __FILE__ ) . '/includes/EDD_License_Handler.php' );
-
 // Instantiate the licensing / updater. Must be placed in the main plugin file
-$license = new EDD_License( __FILE__, 'Easy Digital Downloads - Dropbox File Store', '1.0', 'AlphaKilo Development Services' );
+if(class_exists('EDD_License') && is_admin() ) {
+    $license = new EDD_License( __FILE__, 'Easy Digital Downloads - Dropbox File Store', '1.0', 'AlphaKilo Development Services' );
+}
 
 // Load Dropbox API
 require_once 'dropbox-sdk/Dropbox/autoload.php';
 use \Dropbox as dbx;
 
-class EDDDropboxShare {
+class EDDDropboxFileStore {
     
     private $_debug = false;
     
-    private $_hook = 'edd-dbshare';
+    private $_hook = 'edd-dbfs';
     private $clientIdentifier = 'edd-dbshare/1.0'; 
     
     // NOTE TO DEVELOPERS / USERS
@@ -33,31 +31,39 @@ class EDDDropboxShare {
     private $db_1 = '/;C%F:VAW:&,Q,S4W>78Y\n\'\n';
     private $db_2 = '/9V8P-S%S,3=Y8F]H,VQN\n\'\n';
     
-    private $KEY_ACCESS_TOKEN = 'edd_dbshare_authToken';
+    private $KEY_ACCESS_TOKEN = 'edd_dbfs_authToken';
     private $PATH_ROOT = '/';
-    private $URL_PREFIX = 'edd-dbshare://';
+    private $URL_PREFIX = 'edd-dbfs://';
     
     /*
      * Constructor for class.  Performs setup / integration with Wordpress
      */
     public function __construct() {   
+        // Load the default language files
+        add_action('init', array($this, 'dbfsInit'));
+        
         // Settings / Authorization hooks
         add_filter('edd_settings_extensions', array($this, 'addSettings'));
         
-        add_action('edd_dbshare_authorization', array($this, 'registerAuthorization'));
+        add_action('edd_dbfs_authorization', array($this, 'registerAuthorization'));
         add_action('template_redirect', array( $this, 'handleAuthActions' ));
         
         // Media hooks
         add_filter( 'media_upload_tabs', array( $this, 'addDropboxTabs' ) );
         add_filter( 'edd_requested_file', array( $this, 'generateUrl' ), 11, 3 );
-        add_filter( 'edd_dbshare_upload'  , array( $this, 'performFileUpload' ), 10, 2 );
+        add_filter( 'edd_dbfs_upload'  , array( $this, 'performFileUpload' ), 10, 2 );
         
 		add_action( 'admin_head', array( $this, 'setupAdminJS' ) );
         add_action( 'media_upload_dropbox_lib' , array( $this, 'registerDBLibTab' ) );
         add_action( 'media_upload_dropbox_upload' , array( $this, 'registerDBUploadTab' ) );
     }
     
-    public static function setupAdminJS() {
+    public function dbfsInit() {
+        $edd_lang_dir = dirname( plugin_basename( EDD_PLUGIN_FILE ) ) . '/languages/';
+        load_plugin_textdomain( 'edd_dbfs', false, $edd_lang_dir );
+    }
+    
+    public function setupAdminJS() {
 		?>
 		<script type="text/javascript">
 			//<![CDATA[
@@ -79,9 +85,11 @@ class EDDDropboxShare {
      **************************************************************************/
     
     public function addDropboxTabs($default_tabs) {
-        $default_tabs['dropbox_upload'] = __( 'Upload to Dropbox', 'edd_dbshare' );
-        $default_tabs['dropbox_lib'] = __( 'Dropbox Library', 'edd_dbshare' );
-
+        global $edd_options;
+        if (array_key_exists($this->KEY_ACCESS_TOKEN, $edd_options) && $edd_options[$this->KEY_ACCESS_TOKEN] != null) {
+            $default_tabs['dropbox_upload'] = __( 'Upload to Dropbox', 'edd_dbfs' );
+            $default_tabs['dropbox_lib'] = __( 'Dropbox Library', 'edd_dbfs' );
+        }
         return $default_tabs; 
     }
     
@@ -112,15 +120,15 @@ class EDDDropboxShare {
         //<![CDATA[
         jQuery(function($){
             $('.save-db-file').click(function() {
-                $(parent.window.edd_filename).val($(this).data('dbshare-filename'));
-                $(parent.window.edd_fileurl).val('<?php echo $this->URL_PREFIX ?>' + $(this).data('dbshare-link'));
+                $(parent.window.edd_filename).val($(this).data('dbfs-filename'));
+                $(parent.window.edd_fileurl).val('<?php echo $this->URL_PREFIX ?>' + $(this).data('dbfs-link'));
                 parent.window.tb_remove();
             });
         });
         //]]>
     </script>
     <div style="background-color: #fff; margin-top: -21px; padding-left: 20px; width: inherit;" id="media-items">
-        <h3 class="media-title" style="padding-top: 21px;"><?php _e('Select a file from Dropbox', 'edd_dbshare'); ?></h3>
+        <h3 class="media-title" style="padding-top: 21px;"><?php __('Select a file from Dropbox', 'edd_dbfs'); ?></h3>
 <?php
         if( is_array( $files ) ) {
 ?>
@@ -208,7 +216,7 @@ class EDDDropboxShare {
     private function outputContentLI($fullPath, $filename) {
 ?>
         <li class="media-item">
-            <a class="save-db-file button-secondary" href="javascript:void(0)" style="margin:4px;" data-dbshare-filename="<?php echo $filename ?>" data-dbshare-link="<?php echo substr($fullPath, 1) ?>"><?php echo __('Select', 'edd_dbshare') ?></a>
+            <a class="save-db-file button-secondary" href="javascript:void(0)" style="margin:4px;" data-dbfs-filename="<?php echo $filename ?>" data-dbfs-link="<?php echo substr($fullPath, 1) ?>"><?php _e('Select', 'edd_dbfs') ?></a>
             <span style="line-height: 36px; margin-left: 10px;"><?php echo $filename ?></span>
         </li>
 <?php  
@@ -240,10 +248,14 @@ class EDDDropboxShare {
         $metadata = $this->getPathMetadata($path);
         $files = $metadata['contents'];
 ?>
+    <style>
+		.edd_errors { -webkit-border-radius: 2px; -moz-border-radius: 2px; border-radius: 2px; border: 1px solid #E6DB55; margin: 0 0 21px 0; background: #FFFFE0; color: #333; }
+		.edd_errors p { margin: 10 15px; padding: 0 10px; }
+	</style>
     <script type="text/javascript">
         //<![CDATA[
         jQuery(function($){
-            $('#edd_dbshare_save_link').click(function() {
+            $('#edd_dbfs_save_link').click(function() {
                 $(parent.window.edd_filename).val($(this).data('db-fn'));
                 $(parent.window.edd_fileurl).val('<?php echo $this->URL_PREFIX ?>' + $(this).data('db-path'));
                 parent.window.tb_remove();
@@ -252,7 +264,26 @@ class EDDDropboxShare {
         //]]>
     </script>
     <div style="background-color: #fff; margin-top: -21px; padding-left: 20px; width: inherit;" id="media-items">
-        <h3 class="media-title" style="padding-top: 21px;"><?php _e('Select a folder from Dropbox to upload to:', 'edd_dbshare'); ?></h3>
+        <h3 class="media-title" style="padding-top: 21px;"><?php _e('Select a folder from Dropbox to upload to:', 'edd_dbfs'); ?></h3>
+        <span class="media-title" style="padding-top: 21px;"><strong><?php _e('Current directory: ', 'edd_dbfs') ?></strong><?php echo $path ?></span>
+        <?php 
+            $successFlag = filter_input(INPUT_GET, 'edd_dbfs_success', FILTER_UNSAFE_RAW);
+            if (!empty($successFlag) && '1' == $successFlag) {
+                $savedPathAndFilename = filter_input(INPUT_GET, 'edd_dbfs_filename', FILTER_UNSAFE_RAW);
+                $this->debug($savedPathAndFilename);
+                $lastSlashPos = strrpos($savedPathAndFilename, '/', -1);
+                $savedFilename = substr($savedPathAndFilename, $lastSlashPos > 0 ? $lastSlashPos + 1 : 0);
+?>
+            <div class="edd_errors">
+                <p class="edd_success">File uploaded successfully: /<?php echo $savedPathAndFilename ?> </p>
+                <p>
+                    <a href="javascript:void(0)" 
+                       id="edd_dbfs_save_link" data-db-fn="<?php echo $savedFilename ?>" data-db-path="<?php echo $savedPathAndFilename ?>">Use this file in your Download</a>
+                </p>
+            </div>
+<?php                                                                                              
+            }
+?>
 <?php
         if( is_array( $files ) ) {
 ?>
@@ -289,31 +320,12 @@ class EDDDropboxShare {
 <?php
         }
         
-        $formAction = add_query_arg(array( 'edd_action' => 'dbshare_upload' ), admin_url());
+        $formAction = add_query_arg(array( 'edd_action' => 'dbfs_upload' ), admin_url());
 ?>
-        <h3 class="media-title" style="padding-top: 21px;"><?php echo 'Current directory: ' . $path ?></h3>
         <form enctype="multipart/form-data" method="post" action="<?php echo esc_attr($formAction); ?>">
-            <p><input type="file" name="edd_dbshare_file" style="padding-left: 0px;"/></p>
-            <p><input type="submit" class="button-secondary" value="<?php echo 'Upload' ?>"/></p>
-            <input type="hidden" name="edd_dbshare_path" value="<?php echo $path ?>" />
-<?php 
-            $successFlag = filter_input(INPUT_GET, 'edd_dbshare_success', FILTER_UNSAFE_RAW);
-            if (!empty($successFlag) && '1' == $successFlag) {
-                $savedPathAndFilename = filter_input(INPUT_GET, 'edd_dbshare_filename', FILTER_UNSAFE_RAW);
-                $this->debug($savedPathAndFilename);
-                $lastSlashPos = strrpos($savedPathAndFilename, '/', -1);
-                $savedFilename = substr($savedPathAndFilename, $lastSlashPos > 0 ? $lastSlashPos + 1 : 0);
-?>
-            <div class="edd_errors">
-                <p class="edd_success">File uploaded successfully: /<?php echo $savedPathAndFilename ?></p>
-                <p>
-                    <a href="javascript:void(0)" id="edd_dbshare_save_link" class="button-secondary" 
-                       data-db-fn="<?php echo $savedFilename ?>" data-db-path="<?php echo $savedPathAndFilename ?>">Use File</a>
-                </p>
-            </div>
-<?php                                                                                              
-            }
-?>
+            <p><input type="file" name="edd_dbfs_file" style="padding-left: 0px;"/></p>
+            <p><input type="submit" class="button-secondary" value="<?php _e('Upload', 'edd_dbfs') ?>"/></p>
+            <input type="hidden" name="edd_dbfs_path" value="<?php echo $path ?>" />
         </form>
     </div>
 <?php
@@ -325,29 +337,29 @@ class EDDDropboxShare {
 			return;
 		}
 
-		$uploadCapability = apply_filters( 'edd_dbshare_upload_cap', 'edit_products' );
+		$uploadCapability = apply_filters( 'edd_dbfs_upload_cap', 'edit_products' );
 		if(!current_user_can($uploadCapability)) {
-			wp_die(__( 'You do not have permission to upload files to Dropbox.', 'edd_dbshare' ) );
+			wp_die(__( 'You do not have permission to upload files to Dropbox.', 'edd_dbfs' ) );
 		}
 
-		if(empty($_FILES['edd_dbshare_file'] ) || empty( $_FILES['edd_dbshare_file']['name'] ) ) {
-			wp_die(__( 'Please select a file to upload.', 'edd_dbshare' ), __( 'Error', 'edd_dbshare' ), array( 'back_link' => true ));
+		if(empty($_FILES['edd_dbfs_file'] ) || empty( $_FILES['edd_dbfs_file']['name'] ) ) {
+			wp_die(__( 'Please select a file to upload.', 'edd_dbfs' ), __( 'Error', 'edd_dbfs' ), array( 'back_link' => true ));
 		}
 
-        $path = filter_input(INPUT_POST, 'edd_dbshare_path', FILTER_SANITIZE_URL);
+        $path = filter_input(INPUT_POST, 'edd_dbfs_path', FILTER_SANITIZE_URL);
         if (substr($path, -1) !== '/') {
             $path = $path . '/';
         }
-        $filename = $path . $_FILES['edd_dbshare_file']['name'];
+        $filename = $path . $_FILES['edd_dbfs_file']['name'];
         $this->debug('Upload path: ' . $filename);
         
         try {
-            $resultFilename = $this->uploadFile($filename, $_FILES['edd_dbshare_file']['tmp_name']);
+            $resultFilename = $this->uploadFile($filename, $_FILES['edd_dbfs_file']['tmp_name']);
             if($resultFilename != null) {            
                 $redirectURL = add_query_arg(
                     array(
-                        'edd_dbshare_success' => '1',
-                        'edd_dbshare_filename' => rawurlencode(substr($resultFilename, 1))
+                        'edd_dbfs_success' => '1',
+                        'edd_dbfs_filename' => rawurlencode(substr($resultFilename, 1))
                     ),
                     $_SERVER['HTTP_REFERER']
                 );
@@ -356,11 +368,11 @@ class EDDDropboxShare {
                 wp_safe_redirect($redirectURL); 
                 exit;
             } else {
-                wp_die(__( 'An error occurred while attempting to upload your file.', 'edd_dbshare_file' ), __( 'Error', 'edd_dbshare_file' ), array( 'back_link' => true ));
+                wp_die(__( 'An error occurred while attempting to upload your file.', 'edd_dbfs_file' ), __( 'Error', 'edd_dbfs_file' ), array( 'back_link' => true ));
             }
         } catch (Exception $e) {
             $this->debug('File upload error: ' . $e->getMessage());
-            wp_die(__( 'An error occurred while attempting to upload your file.', 'edd_dbshare_file' ), __( 'Error', 'edd_dbshare_file' ), array( 'back_link' => true ));
+            wp_die(__( 'An error occurred while attempting to upload your file.', 'edd_dbfs_file' ), __( 'Error', 'edd_dbfs_file' ), array( 'back_link' => true ));
         }
 	}
     
@@ -419,28 +431,31 @@ class EDDDropboxShare {
     * Adds the settings to the Add-On section
     */
     public function addSettings($settings) {
-       $dbshare_settings = array(
+       $dbfs_settings = array(
            array(
-               'id' => 'edd_dbshare_header',
-               'name' => '<strong>' . __('Dropbox File Store', 'edd_dbshare') . '</strong>',
+               'id' => 'edd_dbfs_header',
+               'name' => '<strong>' . __('Dropbox File Store', 'edd_dbfs') . '</strong>',
                'desc' => '',
                'type' => 'header',
                'size' => 'regular'
            ),
             array(
-                'id' => 'dbshare_authorization',
+                'id' => 'dbfs_authorization',
                 'type' => 'hook'
             )
        );
 
-       return array_merge( $settings, $dbshare_settings );
+       return array_merge( $settings, $dbfs_settings );
    }
 
     public function registerAuthorization() {
         global $edd_options;
         
         // Always provide the option to auth (or reauth) credentials
-        $authToken = $edd_options[$this->KEY_ACCESS_TOKEN];
+        $authToken = null;
+        if (array_key_exists($this->KEY_ACCESS_TOKEN, $edd_options)) {
+            $authToken = $edd_options[$this->KEY_ACCESS_TOKEN];
+        }
         $authorize_url = wp_nonce_url( 
             add_query_arg( 
                 array( 
@@ -470,29 +485,29 @@ class EDDDropboxShare {
             <script type="text/javascript">
                 //<![CDATA[
                 jQuery(function($){
-                    $('#edd_dbshare_register_link').click(function() {
+                    $('#edd_dbfs_register_link').click(function() {
                         event.preventDefault();
 
-                        var code = $('#edd_dbshare_auth_code').val();
+                        var code = $('#edd_dbfs_auth_code').val();
                         var url = $(this).attr('href');
                         document.location.href = url + '&code=' + code;
                     });
-                    $('#edd_dbshare_getCode_link').click(function() {
-                        $('#edd_dbshare_auth_code').show();
+                    $('#edd_dbfs_getCode_link').click(function() {
+                        $('#edd_dbfs_auth_code').show();
                     });
                 });
                 //]]>
             </script>
-            <label><strong>To authorize your account:</strong>
+            <label><strong><?php _e('To authorize your account', 'edd_dbfs') ?>:</strong>
                 <ol>
-                    <li>Click the "Get Code" button below to get an authorization code for EDD from Dropbox.</li>
-                    <li>Copy the code you get from Dropbox into the text box that appears to the right.</li>
-                    <li>Click the "Register Code" button to complete the authorization process.</li>
+                    <li><?php _e('Click the "Get Code" button below to get an authorization code for EDD from Dropbox.', 'edd_dbfs') ?></li>
+                    <li><?php _e('Copy the code you get from Dropbox into the text box that appears to the right.', 'edd_dbfs') ?></li>
+                    <li><?php _e('Click the "Register Code" button to complete the authorization process.', 'edd_dbfs') ?></li>
                 </ol>
             </label>
-            <a href="<?php echo esc_url( $authorize_url );?>" id="edd_dbshare_getCode_link" class="button button-large button-primary" target="edd_dbshare_auth">Get Code</a>
-            <a href="<?php echo esc_url( $authorized_url );?>" id="edd_dbshare_register_link" class="button button-large button-primary">Register Code</a>
-            <input type="text" id="edd_dbshare_auth_code" class="regular-text" style="display: none; margin-left: 5px;" />
+            <a href="<?php echo esc_url( $authorize_url );?>" id="edd_dbfs_getCode_link" class="button button-large button-primary" target="edd_dbfs_auth"><?php _e('Get Code', 'edd_dbfs') ?></a>
+            <a href="<?php echo esc_url( $authorized_url );?>" id="edd_dbfs_register_link" class="button button-large button-primary"><?php _e('Register Code', 'edd_dbfs') ?></a>
+            <input type="text" id="edd_dbfs_auth_code" class="regular-text" style="display: none; margin-left: 5px;" />
         <?php
         }
         echo ob_get_clean();
@@ -512,7 +527,7 @@ class EDDDropboxShare {
             
             ob_start();
             ?>
-            <a href="<?php echo esc_url( $deauthorize_url );?>" class="button button-large button-secondary delete">Remove Authorization</a>    
+            <a href="<?php echo esc_url( $deauthorize_url );?>" class="button button-large button-secondary delete"><?php _e('Remove Authorization', 'edd_dbfs') ?></a>    
             <?php
             echo ob_get_clean();
         }
@@ -552,7 +567,7 @@ class EDDDropboxShare {
             }
             catch (Exception $e) {
                 $this->debug('Error occurred while authorizing account: ' . $e->getMessage());
-                wp_die(__( 'An error occurred while attempting to complete the authorization process with Dropbox using the code you provided.', 'edd_dbshare_file' ), __( 'Error', 'edd_dbshare_file' ), array( 'back_link' => true ));
+                wp_die(__( 'An error occurred while attempting to complete the authorization process with Dropbox using the code you provided.', 'edd_dbfs_file' ), __( 'Error', 'edd_dbfs_file' ), array( 'back_link' => true ));
             }
             wp_safe_redirect($this->getSettingsUrl());
             exit;
@@ -610,4 +625,4 @@ class EDDDropboxShare {
     }
 }
 
-new EDDDropboxShare();
+new EDDDropboxFileStore();
