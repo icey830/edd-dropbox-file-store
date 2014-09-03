@@ -3,14 +3,14 @@
 Plugin Name: Easy Digital Downloads - Dropbox File Store
 Plugin URL: http://easydigitaldownloads.com/extension/dropbox_file_store
 Description: Adds support for storing and sharing your digital goods via Dropbox.
-Version: 1.0
+Version: 1.3
 Author: Adam Kreiss
 Author URI: N/A
 */
 
 // Instantiate the licensing / updater. Must be placed in the main plugin file
 if(class_exists('EDD_License') && is_admin() ) {
-    $license = new EDD_License( __FILE__, 'Easy Digital Downloads - Dropbox File Store', '1.0', 'AlphaKilo Development Services' );
+    $license = new EDD_License( __FILE__, 'EDD Dropbox File Store', '1.3', 'AlphaKilo Development Services' );
 }
 
 // Load Dropbox API
@@ -19,7 +19,7 @@ use \Dropbox as dbx;
 
 class EDDDropboxFileStore {
     
-    private $_debug = false;
+    private $_debug = true;
     
     private $_hook = 'edd-dbfs';
     private $clientIdentifier = 'edd-dbshare/1.0'; 
@@ -32,6 +32,7 @@ class EDDDropboxFileStore {
     private $db_2 = '/9V8P-S%S,3=Y8F]H,VQN\n\'\n';
     
     private $KEY_ACCESS_TOKEN = 'edd_dbfs_authToken';
+    private $KEY_FORCE_DL   = 'edd_force_dl';
     private $PATH_ROOT = '/';
     private $URL_PREFIX = 'edd-dbfs://';
     
@@ -392,7 +393,7 @@ class EDDDropboxFileStore {
      * EDD DBShare Media Download Integration
      **************************************************************************/
      
-    public function generateUrl($file, $downloadFiles, $fileKey) {
+    public function generateUrl($file, $downloadFiles, $fileKey) {        
         $fileData = $downloadFiles[$fileKey];
         $filename = $fileData['file'];
 
@@ -406,6 +407,8 @@ class EDDDropboxFileStore {
     }
     
     private function getDownloadURL($filename) {
+        global $edd_options;
+        
         $this->debug('Download filename: ' . $filename);
         
         // Remove the prefix
@@ -414,6 +417,11 @@ class EDDDropboxFileStore {
         $dbClient = $this->getClient();
         list($url, $expires) = $dbClient->createTemporaryDirectLink($path);
         $this->debug('Download URL: ' . $url);
+        
+        if (array_key_exists($this->KEY_FORCE_DL, $edd_options) && $edd_options[$this->KEY_FORCE_DL]) {
+            $this->debug('Forcing download');
+            $url = add_query_arg('dl', '1', $url);
+        }
         
         add_filter('edd_file_download_method', array($this, 'setFileDownloadMethod'));
         return $url;
@@ -431,17 +439,24 @@ class EDDDropboxFileStore {
     * Adds the settings to the Add-On section
     */
     public function addSettings($settings) {
-       $dbfs_settings = array(
-           array(
-               'id' => 'edd_dbfs_header',
-               'name' => '<strong>' . __('Dropbox File Store', 'edd_dbfs') . '</strong>',
-               'desc' => '',
-               'type' => 'header',
-               'size' => 'regular'
-           ),
+        $dbfs_settings = array(
+            array(
+                'id' => 'edd_dbfs_header',
+                'name' => '<strong>' . __('Dropbox File Store', 'edd_dbfs') . '</strong>',
+                'desc' => '',
+                'type' => 'header',
+                'size' => 'regular'
+            ),
             array(
                 'id' => 'dbfs_authorization',
                 'type' => 'hook'
+            ),
+            array (
+                'id'     => $this->KEY_FORCE_DL,
+                'name'   => 'Force Download of Files',
+                'desc'   => 'This will force the browser to save the download rather than opening it within the browswer (such as video or audio files)',
+                'type'   => 'checkbox',
+                'size'   => 'regular'
             )
        );
 
@@ -567,7 +582,7 @@ class EDDDropboxFileStore {
             }
             catch (Exception $e) {
                 $this->debug('Error occurred while authorizing account: ' . $e->getMessage());
-                wp_die(__( 'An error occurred while attempting to complete the authorization process with Dropbox using the code you provided.', 'edd_dbfs_file' ), __( 'Error', 'edd_dbfs_file' ), array( 'back_link' => true ));
+                wp_die(__( 'An error occurred while attempting to complete the authorization process with Dropbox using the code you provided: ' . $e->getMessage(), 'edd_dbfs_file' ), __( 'Error', 'edd_dbfs_file' ), array( 'back_link' => true ));
             }
             wp_safe_redirect($this->getSettingsUrl());
             exit;
@@ -606,7 +621,7 @@ class EDDDropboxFileStore {
      * Get an instance of the DropBox WebAuth utility used for authorization requests.
      */
     private function getWebAuth() {
-        session_start();
+        //session_start(); // Removed to handle session issue - I believe this was added when trying to do the auto-redirect functionality using dbx\WebAuth
         $appInfo = new dbx\AppInfo(convert_uudecode($this->db_1), convert_uudecode($this->db_2));
         return new dbx\WebAuthNoRedirect($appInfo, $this->clientIdentifier);
     }
