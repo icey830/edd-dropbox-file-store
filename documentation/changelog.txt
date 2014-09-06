@@ -1,0 +1,16 @@
+== Changelog ==
+= 1.3 =
+
+* Fixed PHP session error that may have been contributing to some users being unable to authorize the plug-in with their Dropbox account
+
+= 1.2 =
+
+* Improved troubleshooting support when authorizing with your Dropbox account.
+
+= 1.1 =
+
+* Added support for forcing the browser to download files from Dropbox rather than opening them from within the browser (such as audio or video files)
+
+= 1.0 =
+
+* Initial release

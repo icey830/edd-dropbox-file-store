@@ -3,14 +3,14 @@
 Plugin Name: Easy Digital Downloads - Dropbox File Store
 Plugin URL: http://easydigitaldownloads.com/extension/dropbox_file_store
 Description: Adds support for storing and sharing your digital goods via Dropbox.
-Version: 1.3
+Version: 1.2.1
 Author: Adam Kreiss
 Author URI: N/A
 */
 
 // Instantiate the licensing / updater. Must be placed in the main plugin file
 if(class_exists('EDD_License') && is_admin() ) {
-    $license = new EDD_License( __FILE__, 'EDD Dropbox File Store', '1.3', 'AlphaKilo Development Services' );
+    $license = new EDD_License( __FILE__, 'EDD Dropbox File Store', '1.2.1', 'AlphaKilo Development Services' );
 }
 
 // Load Dropbox API
@@ -19,7 +19,7 @@ use \Dropbox as dbx;
 
 class EDDDropboxFileStore {
     
-    private $_debug = true;
+    private $_debug = false;
     
     private $_hook = 'edd-dbfs';
     private $clientIdentifier = 'edd-dbshare/1.0'; 
@@ -60,7 +60,7 @@ class EDDDropboxFileStore {
     }
     
     public function dbfsInit() {
-        $edd_lang_dir = dirname( plugin_basename( EDD_PLUGIN_FILE ) ) . '/languages/';
+        $edd_lang_dir = dirname( plugin_basename( __FILE__ ) ) . '/languages/';
         load_plugin_textdomain( 'edd_dbfs', false, $edd_lang_dir );
     }
     
@@ -500,15 +500,15 @@ class EDDDropboxFileStore {
             <script type="text/javascript">
                 //<![CDATA[
                 jQuery(function($){
-                    $('#edd_dbfs_register_link').click(function() {
-                        event.preventDefault();
+                    $('#edd_dbfs_register_link').click(function(e) {
+                        e.preventDefault();
 
                         var code = $('#edd_dbfs_auth_code').val();
                         var url = $(this).attr('href');
                         document.location.href = url + '&code=' + code;
                     });
                     $('#edd_dbfs_getCode_link').click(function() {
-                        $('#edd_dbfs_auth_code').show();
+                        $('#edd_dbfs_auth_code,#edd_dbfs_register_link').show();
                     });
                 });
                 //]]>
@@ -521,8 +521,8 @@ class EDDDropboxFileStore {
                 </ol>
             </label>
             <a href="<?php echo esc_url( $authorize_url );?>" id="edd_dbfs_getCode_link" class="button button-large button-primary" target="edd_dbfs_auth"><?php _e('Get Code', 'edd_dbfs') ?></a>
-            <a href="<?php echo esc_url( $authorized_url );?>" id="edd_dbfs_register_link" class="button button-large button-primary"><?php _e('Register Code', 'edd_dbfs') ?></a>
-            <input type="text" id="edd_dbfs_auth_code" class="regular-text" style="display: none; margin-left: 5px;" />
+            <a href="<?php echo esc_url( $authorized_url );?>" id="edd_dbfs_register_link" style="display:none;" class="button button-large button-primary"><?php _e('Register Code', 'edd_dbfs') ?></a>
+            <input type="text" id="edd_dbfs_auth_code" class="regular-text" style="display: none; margin-left: 5px;" value="" />
         <?php
         }
         echo ob_get_clean();
@@ -621,7 +621,6 @@ class EDDDropboxFileStore {
      * Get an instance of the DropBox WebAuth utility used for authorization requests.
      */
     private function getWebAuth() {
-        //session_start(); // Removed to handle session issue - I believe this was added when trying to do the auto-redirect functionality using dbx\WebAuth
         $appInfo = new dbx\AppInfo(convert_uudecode($this->db_1), convert_uudecode($this->db_2));
         return new dbx\WebAuthNoRedirect($appInfo, $this->clientIdentifier);
     }
