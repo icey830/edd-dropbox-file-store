@@ -3,14 +3,14 @@
 Plugin Name: Easy Digital Downloads - Dropbox File Store
 Plugin URL: http://easydigitaldownloads.com/extension/dropbox_file_store
 Description: Adds support for storing and sharing your digital goods via Dropbox.
-Version: 1.2.1
+Version: 1.4
 Author: Adam Kreiss
 Author URI: N/A
 */
 
 // Instantiate the licensing / updater. Must be placed in the main plugin file
 if(class_exists('EDD_License') && is_admin() ) {
-    $license = new EDD_License( __FILE__, 'EDD Dropbox File Store', '1.2.1', 'AlphaKilo Development Services' );
+    $license = new EDD_License( __FILE__, 'EDD Dropbox File Store', '1.4', 'AlphaKilo Development Services' );
 }
 
 // Load Dropbox API
@@ -64,16 +64,30 @@ class EDDDropboxFileStore {
         load_plugin_textdomain( 'edd_dbfs', false, $edd_lang_dir );
     }
     
+     /*
+	 * Activation function fires when the plugin is activated.
+	 *
+	 * This function is fired when the activation hook is called by WordPress,
+	 * 
+	 */
+	public static function activation() {
+        // Check for required PHP version
+        if (version_compare(PHP_VERSION, '5.3', '<'))
+        {
+            deactivate_plugins( basename( __FILE__ ) );
+            wp_die('<p>The <strong>Easy Digital Downloads - Dropbox File Store</strong> plugin requires PHP 5.3 or greater.  You are currently running PHP ' 
+                    . PHP_VERSION . '</p>','Plugin Activation Error',  array( 'response'=>200, 'back_link'=>TRUE ) );
+        }
+    }
+    
     public function setupAdminJS() {
 		?>
 		<script type="text/javascript">
 			//<![CDATA[
 			jQuery(function($){
 				$('body').on('click', '.edd_upload_file_button', function(e) {
-
 					window.edd_fileurl = $(this).parent().prev().find('input');
 					window.edd_filename = $(this).parent().parent().parent().prev().find('input');
-
 				});
 			});
 			//]]>
@@ -638,5 +652,12 @@ class EDDDropboxFileStore {
        }
     }
 }
+
+/**
+ * The activation hook is called outside of the singleton because WordPress doesn't
+ * register the call from within the class hence, needs to be called outside and the
+ * function also needs to be static.
+ */
+register_activation_hook( __FILE__, array( 'EDDDropboxFileStore', 'activation' ) );
 
 new EDDDropboxFileStore();
