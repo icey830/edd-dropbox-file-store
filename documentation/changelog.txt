@@ -1,4 +1,9 @@
 == Changelog ==
+= 1.5 =
+
+* Upgraded to v1.1.4 of the Dropbox PHP libraries
+* Removed the Dropbox tabs from the Media uploader on regular, non EDD Download posts
+
 = 1.4 =
 
 * Added check for required PHP version (5.3)

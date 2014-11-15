@@ -3,14 +3,14 @@
 Plugin Name: Easy Digital Downloads - Dropbox File Store
 Plugin URL: http://easydigitaldownloads.com/extension/dropbox_file_store
 Description: Adds support for storing and sharing your digital goods via Dropbox.
-Version: 1.4
+Version: 1.5
 Author: Adam Kreiss
 Author URI: N/A
 */
 
 // Instantiate the licensing / updater. Must be placed in the main plugin file
 if(class_exists('EDD_License') && is_admin() ) {
-    $license = new EDD_License( __FILE__, 'EDD Dropbox File Store', '1.4', 'AlphaKilo Development Services' );
+    $license = new EDD_License( __FILE__, 'EDD Dropbox File Store', '1.5', 'AlphaKilo Development Services' );
 }
 
 // Load Dropbox API
@@ -35,6 +35,8 @@ class EDDDropboxFileStore {
     private $KEY_FORCE_DL   = 'edd_force_dl';
     private $PATH_ROOT = '/';
     private $URL_PREFIX = 'edd-dbfs://';
+    
+    private $POSTTYPE_DOWNLOAD = 'download';
     
     /*
      * Constructor for class.  Performs setup / integration with Wordpress
@@ -101,9 +103,13 @@ class EDDDropboxFileStore {
     
     public function addDropboxTabs($default_tabs) {
         global $edd_options;
+        
         if (array_key_exists($this->KEY_ACCESS_TOKEN, $edd_options) && $edd_options[$this->KEY_ACCESS_TOKEN] != null) {
-            $default_tabs['dropbox_upload'] = __( 'Upload to Dropbox', 'edd_dbfs' );
-            $default_tabs['dropbox_lib'] = __( 'Dropbox Library', 'edd_dbfs' );
+            $post_type = get_post_type(get_the_ID());
+            if ($post_type == $this->POSTTYPE_DOWNLOAD) {            
+                $default_tabs['dropbox_upload'] = __( 'Upload to Dropbox', 'edd_dbfs' );
+                $default_tabs['dropbox_lib'] = __( 'Dropbox Library', 'edd_dbfs' );
+            }
         }
         return $default_tabs; 
     }
