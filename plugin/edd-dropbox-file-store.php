@@ -3,19 +3,15 @@
 Plugin Name: Easy Digital Downloads - Dropbox File Store
 Plugin URL: http://easydigitaldownloads.com/extension/dropbox_file_store
 Description: Adds support for storing and sharing your digital goods via Dropbox.
-Version: 1.5
+Version: 1.6.0
 Author: Adam Kreiss
 Author URI: N/A
 */
 
 // Instantiate the licensing / updater. Must be placed in the main plugin file
 if(class_exists('EDD_License') && is_admin() ) {
-    $license = new EDD_License( __FILE__, 'EDD Dropbox File Store', '1.5', 'AlphaKilo Development Services' );
+    $license = new EDD_License( __FILE__, 'EDD Dropbox File Store', '1.6.0', 'AlphaKilo Development Services' );
 }
-
-// Load Dropbox API
-require_once 'dropbox-sdk/Dropbox/autoload.php';
-use \Dropbox as dbx;
 
 class EDDDropboxFileStore {
     
@@ -105,11 +101,11 @@ class EDDDropboxFileStore {
         global $edd_options;
         
         if (array_key_exists($this->KEY_ACCESS_TOKEN, $edd_options) && $edd_options[$this->KEY_ACCESS_TOKEN] != null) {
-            $post_type = get_post_type(get_the_ID());
-            if ($post_type == $this->POSTTYPE_DOWNLOAD) {            
+            //$post_type = get_post_type(get_the_ID());
+            //if ($post_type == $this->POSTTYPE_DOWNLOAD) {            
                 $default_tabs['dropbox_upload'] = __( 'Upload to Dropbox', 'edd_dbfs' );
                 $default_tabs['dropbox_lib'] = __( 'Dropbox Library', 'edd_dbfs' );
-            }
+            //}
         }
         return $default_tabs; 
     }
@@ -402,7 +398,7 @@ class EDDDropboxFileStore {
        
         $inStream = @fopen($filepath, 'rb');
         
-        $result = $dbClient->uploadFile($filename, dbx\WriteMode::add(), $inStream);
+        $result = $dbClient->uploadFile($filename, \Dropbox\WriteMode::add(), $inStream);
         $this->debug('Upload result: ' . print_r($result, true));
         
         if ($result == null || !array_key_exists('path', $result)) { return null; }
@@ -633,16 +629,26 @@ class EDDDropboxFileStore {
         if ($authToken == null) {
             return null;
         }
+
+		// Load Dropbox API if not already loaded
+		if (!class_exists('Dropbox\\Client')) {
+			require_once 'dropbox-sdk/Dropbox/autoload.php';
+		}
         
-        return new dbx\Client($authToken, $this->clientIdentifier);
+        return new \Dropbox\Client($authToken, $this->clientIdentifier);
     }
     
     /*
      * Get an instance of the DropBox WebAuth utility used for authorization requests.
      */
     private function getWebAuth() {
-        $appInfo = new dbx\AppInfo(convert_uudecode($this->db_1), convert_uudecode($this->db_2));
-        return new dbx\WebAuthNoRedirect($appInfo, $this->clientIdentifier);
+		// Load Dropbox API if not already loaded
+		if (!class_exists('Dropbox\\Client')) {
+			require_once 'dropbox-sdk/Dropbox/autoload.php';
+		}
+
+        $appInfo = new \Dropbox\AppInfo(convert_uudecode($this->db_1), convert_uudecode($this->db_2));
+        return new \Dropbox\WebAuthNoRedirect($appInfo, $this->clientIdentifier);
     }
     
     /*
