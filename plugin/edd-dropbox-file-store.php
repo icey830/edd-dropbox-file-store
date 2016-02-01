@@ -3,14 +3,14 @@
 Plugin Name: Easy Digital Downloads - Dropbox File Store
 Plugin URL: http://easydigitaldownloads.com/extension/dropbox_file_store
 Description: Adds support for storing and sharing your digital goods via Dropbox.
-Version: 1.6.0
+Version: 1.6.1
 Author: Adam Kreiss
 Author URI: N/A
 */
 
 // Instantiate the licensing / updater. Must be placed in the main plugin file
 if(class_exists('EDD_License') && is_admin() ) {
-    $license = new EDD_License( __FILE__, 'EDD Dropbox File Store', '1.6.0', 'AlphaKilo Development Services' );
+    $license = new EDD_License( __FILE__, 'EDD Dropbox File Store', '1.6.1', 'AlphaKilo Development Services' );
 }
 
 class EDDDropboxFileStore {
@@ -32,10 +32,8 @@ class EDDDropboxFileStore {
     private $PATH_ROOT = '/';
     private $URL_PREFIX = 'edd-dbfs://';
     
-    private $POSTTYPE_DOWNLOAD = 'download';
-    
     /*
-     * Constructor for class.  Performs setup / integration with Wordpress
+     * Constructor for class.  Performs setup / integration with WordPress
      */
     public function __construct() {   
         // Load the default language files
@@ -45,16 +43,17 @@ class EDDDropboxFileStore {
         add_filter('edd_settings_extensions', array($this, 'addSettings'));
         
         add_action('edd_dbfs_authorization', array($this, 'registerAuthorization'));
-        add_action('template_redirect', array( $this, 'handleAuthActions' ));
+        add_action('template_redirect', array($this, 'handleAuthActions'));
         
         // Media hooks
-        add_filter( 'media_upload_tabs', array( $this, 'addDropboxTabs' ) );
-        add_filter( 'edd_requested_file', array( $this, 'generateUrl' ), 11, 3 );
-        add_filter( 'edd_dbfs_upload'  , array( $this, 'performFileUpload' ), 10, 2 );
+        add_filter('media_upload_tabs', array($this, 'addDropboxTabs'));
+        add_filter('edd_requested_file', array($this, 'generateUrl'), 11, 3);
+        add_filter('edd_dbfs_upload'  , array($this, 'performFileUpload'), 10, 2);
         
-		add_action( 'admin_head', array( $this, 'setupAdminJS' ) );
-        add_action( 'media_upload_dropbox_lib' , array( $this, 'registerDBLibTab' ) );
-        add_action( 'media_upload_dropbox_upload' , array( $this, 'registerDBUploadTab' ) );
+		add_action('admin_head', array($this, 'setupAdminJS' ) );
+        add_action('edd_process_verified_download', array($this, 'checkForDBFSDownload'), 10, 4);
+        add_action('media_upload_dropbox_lib' , array($this, 'registerDBLibTab'));
+        add_action('media_upload_dropbox_upload' , array($this, 'registerDBUploadTab'));
     }
     
     public function dbfsInit() {
@@ -83,7 +82,7 @@ class EDDDropboxFileStore {
 		<script type="text/javascript">
 			//<![CDATA[
 			jQuery(function($){
-				$('body').on('click', '.edd_upload_file_button', function(e) {
+				$('body').on('click', '.edd_upload_file_button', function() {
 					window.edd_fileurl = $(this).parent().prev().find('input');
 					window.edd_filename = $(this).parent().parent().parent().prev().find('input');
 				});
@@ -96,16 +95,21 @@ class EDDDropboxFileStore {
     /***************************************************************************
      * EDD DBShare Media Download Integration
      **************************************************************************/
-    
+
+    /**
+     * Adds the Dropbox tabs to the Media popup.
+     *
+     * @since 1.0
+     *
+     * @param $default_tabs array The existing tabs displayed on the Media popup
+     * @return array An updated list of tabs that may include the Dropbox tabs.
+     */
     public function addDropboxTabs($default_tabs) {
         global $edd_options;
         
         if (array_key_exists($this->KEY_ACCESS_TOKEN, $edd_options) && $edd_options[$this->KEY_ACCESS_TOKEN] != null) {
-            //$post_type = get_post_type(get_the_ID());
-            //if ($post_type == $this->POSTTYPE_DOWNLOAD) {            
-                $default_tabs['dropbox_upload'] = __( 'Upload to Dropbox', 'edd_dbfs' );
-                $default_tabs['dropbox_lib'] = __( 'Dropbox Library', 'edd_dbfs' );
-            //}
+            $default_tabs['dropbox_upload'] = __( 'Upload to Dropbox', 'edd_dbfs' );
+            $default_tabs['dropbox_lib'] = __( 'Dropbox Library', 'edd_dbfs' );
         }
         return $default_tabs; 
     }
@@ -139,7 +143,11 @@ class EDDDropboxFileStore {
             $('.save-db-file').click(function() {
                 $(parent.window.edd_filename).val($(this).data('dbfs-filename'));
                 $(parent.window.edd_fileurl).val('<?php echo $this->URL_PREFIX ?>' + $(this).data('dbfs-link'));
-                parent.window.tb_remove();
+                try {
+                    parent.window.tb_remove();
+                } catch (e) {
+                    parent.window.tb_remove();
+                }
             });
         });
         //]]>
@@ -267,7 +275,7 @@ class EDDDropboxFileStore {
 ?>
     <style>
 		.edd_errors { -webkit-border-radius: 2px; -moz-border-radius: 2px; border-radius: 2px; border: 1px solid #E6DB55; margin: 0 0 21px 0; background: #FFFFE0; color: #333; }
-		.edd_errors p { margin: 10 15px; padding: 0 10px; }
+		.edd_errors p { margin: 10px 15px; padding: 0 10px; }
 	</style>
     <script type="text/javascript">
         //<![CDATA[
@@ -413,7 +421,7 @@ class EDDDropboxFileStore {
         $fileData = $downloadFiles[$fileKey];
         $filename = $fileData['file'];
 
-        // Check whether thsi is file we should be paying attention to
+        // Check whether this is file we should be paying attention to
         if (strpos($filename, $this->URL_PREFIX) === false) {
             return $file;
         }
@@ -438,12 +446,37 @@ class EDDDropboxFileStore {
             $this->debug('Forcing download');
             $url = add_query_arg('dl', '1', $url);
         }
-        
-        add_filter('edd_file_download_method', array($this, 'setFileDownloadMethod'));
+
         return $url;
     }
-    
-    private function setFileDownloadMethod( $method ) {
+
+    /**
+     * Checks if the file being downloaded is a DBFS file and if so, adds a filter to set the correct download method.
+     *
+     * @since 1.6.1
+     *
+     * @param $downloadID int The ID of the download being accessed
+     * @param $email string The email address of the customer
+     * @param $paymentID int The ID of the payment used to purchase the download
+     * @param $args array An array of download parameters
+     */
+    public function checkForDBFSDownload($downloadID, $email, $paymentID, $args) {
+	    // If we have more than 1 result then we need to determine which file
+	    $downloadFiles = edd_get_download_files($downloadID);
+	    $filename = $downloadFiles[0]['file'];
+	    if (count($downloadFiles) > 1) {
+			if (isset($args['file_key']) && $args['file_key'] <= count($downloadFiles)) {
+				$filename = $downloadFiles[$args['file_key']]['file'];
+			}
+	    }
+
+	    // Get the path of the file being downloaded and see if it starts with the DBFS prefix
+	    if (strpos($filename, $this->URL_PREFIX) === 0) {
+		    add_filter('edd_file_download_method', array($this, 'setFileDownloadMethod'));
+	    }
+    }
+
+    public function setFileDownloadMethod( $method ) {
         return 'redirect';
     }
      
@@ -598,7 +631,7 @@ class EDDDropboxFileStore {
             }
             catch (Exception $e) {
                 $this->debug('Error occurred while authorizing account: ' . $e->getMessage());
-                wp_die(__( 'An error occurred while attempting to complete the authorization process with Dropbox using the code you provided: ' . $e->getMessage(), 'edd_dbfs_file' ), __( 'Error', 'edd_dbfs_file' ), array( 'back_link' => true ));
+                wp_die(sprintf(__( 'An error occurred while attempting to complete the authorization process with Dropbox using the code you provided: %d', 'edd_dbfs_file'), $e->getMessage()), __( 'Error', 'edd_dbfs_file' ), array( 'back_link' => true ));
             }
             wp_safe_redirect($this->getSettingsUrl());
             exit;
