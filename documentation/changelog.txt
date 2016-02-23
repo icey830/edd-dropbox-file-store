@@ -1,4 +1,8 @@
 == Changelog ==
+= 1.7 =
+* Added logic to disable SymLinks when downloading a file from Dropbox
+* Added support for settings sections introduced in EDD 2.5
+
 = 1.6.1 =
 * Fixed JavaScript error that occurred when selecting a file from your Dropbox folder
 

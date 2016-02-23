@@ -3,20 +3,20 @@
 Plugin Name: Easy Digital Downloads - Dropbox File Store
 Plugin URL: http://easydigitaldownloads.com/extension/dropbox_file_store
 Description: Adds support for storing and sharing your digital goods via Dropbox.
-Version: 1.6.1
+Version: 1.7.0
 Author: Adam Kreiss
 Author URI: N/A
 */
 
 // Instantiate the licensing / updater. Must be placed in the main plugin file
 if(class_exists('EDD_License') && is_admin() ) {
-    $license = new EDD_License( __FILE__, 'EDD Dropbox File Store', '1.6.1', 'AlphaKilo Development Services' );
+    $license = new EDD_License( __FILE__, 'EDD Dropbox File Store', '1.7.0', 'AlphaKilo Development Services' );
 }
 
 class EDDDropboxFileStore {
     
     private $_debug = false;
-    
+
     private $_hook = 'edd-dbfs';
     private $clientIdentifier = 'edd-dbshare/1.0'; 
     
@@ -32,8 +32,11 @@ class EDDDropboxFileStore {
     private $PATH_ROOT = '/';
     private $URL_PREFIX = 'edd-dbfs://';
     
-    /*
+    /**
      * Constructor for class.  Performs setup / integration with WordPress
+     *
+     * @access      public
+     * @since       1.0.0
      */
     public function __construct() {   
         // Load the default language files
@@ -41,6 +44,7 @@ class EDDDropboxFileStore {
         
         // Settings / Authorization hooks
         add_filter('edd_settings_extensions', array($this, 'addSettings'));
+        add_filter( 'edd_settings_sections_extensions', array($this, 'registerDBFSSection'));
         
         add_action('edd_dbfs_authorization', array($this, 'registerAuthorization'));
         add_action('template_redirect', array($this, 'handleAuthActions'));
@@ -55,18 +59,18 @@ class EDDDropboxFileStore {
         add_action('media_upload_dropbox_lib' , array($this, 'registerDBLibTab'));
         add_action('media_upload_dropbox_upload' , array($this, 'registerDBUploadTab'));
     }
-    
+
     public function dbfsInit() {
         $edd_lang_dir = dirname( plugin_basename( __FILE__ ) ) . '/languages/';
         load_plugin_textdomain( 'edd_dbfs', false, $edd_lang_dir );
     }
     
-     /*
-	 * Activation function fires when the plugin is activated.
-	 *
-	 * This function is fired when the activation hook is called by WordPress,
-	 * 
-	 */
+     /**
+	  * Activation function fires when the plugin is activated.
+	  *
+	  * This function is fired when the activation hook is called by WordPress,
+	  *
+	  */
 	public static function activation() {
         // Check for required PHP version
         if (version_compare(PHP_VERSION, '5.3', '<'))
@@ -461,19 +465,23 @@ class EDDDropboxFileStore {
      * @param $args array An array of download parameters
      */
     public function checkForDBFSDownload($downloadID, $email, $paymentID, $args) {
-	    // If we have more than 1 result then we need to determine which file
-	    $downloadFiles = edd_get_download_files($downloadID);
-	    $filename = $downloadFiles[0]['file'];
-	    if (count($downloadFiles) > 1) {
-			if (isset($args['file_key']) && $args['file_key'] <= count($downloadFiles)) {
-				$filename = $downloadFiles[$args['file_key']]['file'];
-			}
-	    }
+	    if ( isset( $args['file_key'] ) ) {
+		    $fileKey = $args['file_key'];
+		    $downloadFiles = edd_get_download_files( $downloadID );
+		    if ( isset( $downloadFiles[$fileKey] ) ) {
+			    $filename = $downloadFiles[ $args['file_key'] ]['file'];
 
-	    // Get the path of the file being downloaded and see if it starts with the DBFS prefix
-	    if (strpos($filename, $this->URL_PREFIX) === 0) {
-		    add_filter('edd_file_download_method', array($this, 'setFileDownloadMethod'));
+			    // Get the path of the file being downloaded and see if it starts with the DBFS prefix
+			    if ( strpos( $filename, $this->URL_PREFIX ) === 0 ) {
+				    add_filter( 'edd_file_download_method', array( $this, 'setFileDownloadMethod' ) );
+                    add_filter( 'edd_symlink_file_downloads', array( $this, 'disableSymlink'));
+			    }
+		    }
 	    }
+    }
+
+    public function disableSymLink( $symlink ) {
+        return false;
     }
 
     public function setFileDownloadMethod( $method ) {
@@ -503,14 +511,33 @@ class EDDDropboxFileStore {
             array (
                 'id'     => $this->KEY_FORCE_DL,
                 'name'   => 'Force Download of Files',
-                'desc'   => 'This will force the browser to save the download rather than opening it within the browswer (such as video or audio files)',
+                'desc'   => 'This will force the browser to save the download rather than opening it within the browser (such as video or audio files)',
                 'type'   => 'checkbox',
                 'size'   => 'regular'
             )
        );
 
+       // If EDD is at version 2.5 or later...
+       if ( version_compare( EDD_VERSION, 2.5, '>=' ) ) {
+           // Use the previously noted array key as an array key again and next your settings
+           $dbfs_settings = array( 'dbfs-settings' => $dbfs_settings );
+       }
+
        return array_merge( $settings, $dbfs_settings );
    }
+
+    /**
+     * Register DBFS settings
+     *
+     * @since 1.7.0
+     *
+     * @param array $sections The sections available to register
+     * @return array The modified array of registered sections
+     */
+    function registerDBFSSection( $sections ) {
+        $sections['dbfs-settings'] = __( 'Dropbox File Store', 'edd-dbfs' );
+        return $sections;
+    }
 
     public function registerAuthorization() {
         global $edd_options;
