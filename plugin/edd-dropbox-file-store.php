@@ -1,16 +1,16 @@
 <?php
 /*
-Plugin Name: Easy Digital Downloads - Dropbox File Store
-Plugin URL: http://easydigitaldownloads.com/extension/dropbox_file_store
+Plugin Name: Easy Digital Downloads - File Store for Dropbox
+Plugin URL: https://easydigitaldownloads.com/downloads/dropbox-file-store/
 Description: Adds support for storing and sharing your digital goods via Dropbox.
-Version: 1.7.0
+Version: 0.0.0
 Author: Adam Kreiss
-Author URI: N/A
+Author URI: https://caffeinepressmedia.com
 */
 
 // Instantiate the licensing / updater. Must be placed in the main plugin file
 if(class_exists('EDD_License') && is_admin() ) {
-    $license = new EDD_License( __FILE__, 'EDD Dropbox File Store', '1.7.0', 'AlphaKilo Development Services' );
+    $license = new EDD_License( __FILE__, 284975, '0.0.0', 'Adam Kreiss' );
 }
 
 class EDDDropboxFileStore {
