@@ -17,7 +17,7 @@ module.exports = function(grunt) {
                     mode: 'zip'
                 },
                 files : [
-                    { cwd: '<%= globalConfig.dest %>', src: ['**'], dest: '/', expand: true}
+                    { cwd: '<%= globalConfig.dest %>', src: ['**'], dest: '/<%= globalConfig.pluginFolder %>/', expand: true}
                 ]
             }
         },
