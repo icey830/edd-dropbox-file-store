@@ -1,5 +1,17 @@
 == Changelog ==
-= 1.7 =
+= 1.8.2 = 
+Adjust official plugin name to fix update issues
+
+= 1.8.1 =
+* Reverted auto-updater back to using the plugin name
+
+= 1.8.1 =
+* Reverted auto-updater back to using the plugin name
+
+= 1.8.0 =
+* Modified the auto-updater functionality to use the plugin's EDD ID instead of the plugin name
+
+= 1.7.0 =
 * Added logic to disable SymLinks when downloading a file from Dropbox
 * Added support for settings sections introduced in EDD 2.5
 
@@ -9,27 +21,27 @@
 = 1.6.0 =
 * Modified plugin to load Dropbox libraries as late as possible to prevent interference with other plugins
 
-= 1.5 =
+= 1.5.0 =
 
 * Upgraded to v1.1.4 of the Dropbox PHP libraries
 * Removed the Dropbox tabs from the Media uploader on regular, non EDD Download posts
 
-= 1.4 =
+= 1.4.0 =
 
 * Added check for required PHP version (5.3)
 
-= 1.3 =
+= 1.3.0 =
 
 * Fixed PHP session error that may have been contributing to some users being unable to authorize the plug-in with their Dropbox account
 
-= 1.2 =
+= 1.2.0 =
 
 * Improved troubleshooting support when authorizing with your Dropbox account.
 
-= 1.1 =
+= 1.1.0 =
 
 * Added support for forcing the browser to download files from Dropbox rather than opening them from within the browser (such as audio or video files)
 
-= 1.0 =
+= 1.0.0 =
 
 * Initial release

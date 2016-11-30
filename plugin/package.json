@@ -1,6 +1,6 @@
 {
   "name": "edd-file-store-for-dropbox",
-  "version": "1.8.0",
+  "version": "1.8.2",
   "scripts": {},
   "devDependencies": {
     "grunt": "^1.0.1",
