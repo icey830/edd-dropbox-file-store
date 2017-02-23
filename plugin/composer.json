@@ -1,0 +1,16 @@
+{
+  "name": "Easy Digital Downloads - File Store for Dropbox",
+  "description": "EDD WordPress plugin to enable downloading digital goods from Dropbox",
+  "minimum-stability": "stable",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Adam Kreiss",
+      "email": "adam@caffeinepressmedia.com"
+    }
+  ],
+  "require-dev": {
+    "phpunit/phpunit": "5.5.*",
+    "phpunit/phpunit-selenium": ">=2"
+  }
+}

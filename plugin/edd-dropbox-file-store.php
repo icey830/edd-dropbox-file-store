@@ -589,7 +589,7 @@ class EDDDropboxFileStore {
                 });
                 //]]>
             </script>
-            <label><strong><?php _e('To authorize your account', 'edd_dbfs') ?>:</strong>
+            <label><strong id="edd-dbfs-install-instructions"><?php _e('To authorize your account', 'edd_dbfs') ?>:</strong>
                 <ol>
                     <li><?php _e('Click the "Get Code" button below to get an authorization code for EDD from Dropbox.', 'edd_dbfs') ?></li>
                     <li><?php _e('Copy the code you get from Dropbox into the text box that appears to the right.', 'edd_dbfs') ?></li>
@@ -618,7 +618,7 @@ class EDDDropboxFileStore {
             
             ob_start();
             ?>
-            <a href="<?php echo esc_url( $deauthorize_url );?>" class="button button-large button-secondary delete"><?php _e('Remove Authorization', 'edd_dbfs') ?></a>    
+            <a id="edd-dbfs-deauth" href="<?php echo esc_url( $deauthorize_url );?>" class="button button-large button-secondary delete"><?php _e('Remove Authorization', 'edd_dbfs') ?></a>
             <?php
             echo ob_get_clean();
         }

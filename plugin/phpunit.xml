@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit colors="true">
+    <testsuites>
+        <testsuite name="Standard Test Suite">
+            <directory>./test/</directory>
+        </testsuite>
+    </testsuites>
+    <listeners>
+        <listener class="ResetTestListener" file="./test/ResetTestListener.php" />
+    </listeners>
+</phpunit>
