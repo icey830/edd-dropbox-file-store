@@ -42,9 +42,14 @@ class TestUtility
     public function loginToAdminSite() {
         $this->testRunner->url('http://local.wordpress.dev/wp-admin');
         $this->waitForPageLoad('#user_login');
+        sleep(.5);
 
         // Fill in user credentials
+        $this->testRunner->byId('user_login')->click();
+        sleep(.5);
         $this->testRunner->byId('user_login')->value('admin');
+        $this->testRunner->byId('user_pass')->click();
+        sleep(.5);
         $this->testRunner->byId('user_pass')->value('password');
         $this->testRunner->byId('wp-submit')->click();
         $this->waitForPageLoad();

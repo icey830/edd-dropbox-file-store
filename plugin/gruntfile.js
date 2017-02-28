@@ -26,7 +26,8 @@ module.exports = function(grunt) {
                 files: [
                     {expand: true, src: ['*.php'], dest: '<%= globalConfig.dest %>', filter: 'isFile'},
                     { expand: true, src: ['includes/**'], dest: '<%= globalConfig.dest %>', filter: 'isFile' },
-                    { expand: true, src: ['dropbox-sdk/**'], dest: '<%= globalConfig.dest %>', filter: 'isFile' }
+                    { expand: true, src: ['dropbox-v1-sdk/**'], dest: '<%= globalConfig.dest %>', filter: 'isFile' },
+                    { expand: true, src: ['dropbox-v2-sdk/**'], dest: '<%= globalConfig.dest %>', filter: 'isFile' }
                 ]
             }
         },

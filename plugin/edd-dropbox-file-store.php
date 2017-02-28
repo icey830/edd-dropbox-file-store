@@ -18,14 +18,6 @@ class EDDDropboxFileStore {
     private $_debug = false;
 
     private $_hook = 'edd-dbfs';
-    private $clientIdentifier = 'edd-dbshare/1.0'; 
-    
-    // NOTE TO DEVELOPERS / USERS
-    // The values below are the encrypted versions of the Dropbox app key used for this add-on.  Please
-    // do not use these values for other apps.  If you would like to use your own key for this plug-in
-    // please contact the EDD support team on the EDD forums for details on how to do so.
-    private $db_1 = '/;C%F:VAW:&,Q,S4W>78Y\n\'\n';
-    private $db_2 = '/9V8P-S%S,3=Y8F]H,VQN\n\'\n';
     
     private $KEY_ACCESS_TOKEN = 'edd_dbfs_authToken';
     private $KEY_FORCE_DL   = 'edd_force_dl';
@@ -44,7 +36,7 @@ class EDDDropboxFileStore {
         
         // Settings / Authorization hooks
         add_filter('edd_settings_extensions', array($this, 'addSettings'));
-        add_filter( 'edd_settings_sections_extensions', array($this, 'registerDBFSSection'));
+        add_filter('edd_settings_sections_extensions', array($this, 'registerDBFSSection'));
         
         add_action('edd_dbfs_authorization', array($this, 'registerAuthorization'));
         add_action('template_redirect', array($this, 'handleAuthActions'));
@@ -215,7 +207,7 @@ class EDDDropboxFileStore {
             return null;
         }
 
-        $folderMetadata = $dbClient->getMetadataWithChildren($path);
+        $folderMetadata = $dbClient->getFolderMetadata($path);
         if ($folderMetadata == null) {
             return null;
         }
@@ -410,7 +402,7 @@ class EDDDropboxFileStore {
        
         $inStream = @fopen($filepath, 'rb');
         
-        $result = $dbClient->uploadFile($filename, \Dropbox\WriteMode::add(), $inStream);
+        $result = $dbClient->uploadFile($filename, $inStream);
         $this->debug('Upload result: ' . print_r($result, true));
         
         if ($result == null || !array_key_exists('path', $result)) { return null; }
@@ -443,7 +435,7 @@ class EDDDropboxFileStore {
         $path = '/' . substr($filename, strlen($this->URL_PREFIX));
         
         $dbClient = $this->getClient();
-        list($url, $expires) = $dbClient->createTemporaryDirectLink($path);
+        list($url, $expires) = $dbClient->getTemporaryLinkin($path);
         $this->debug('Download URL: ' . $url);
         
         if (array_key_exists($this->KEY_FORCE_DL, $edd_options) && $edd_options[$this->KEY_FORCE_DL]) {
@@ -636,20 +628,20 @@ class EDDDropboxFileStore {
         }
         
         if ( 'authorize' == $actionParam ) {
-            $webAuth = $this->getWebAuth();
+            $client = $this->getClient();
             
-            $authorizeUrl = $webAuth->start();
+            $authorizeUrl = $client->beginAuthorization();
             wp_redirect($authorizeUrl);
             exit;
         }
-        else if ( 'authorized' == $actionParam ) {            
-            $webAuth = $this->getWebAuth();
+        else if ( 'authorized' == $actionParam ) {
+            $client = $this->getClient();
             
             // Wrap in a try catch to handle where the user declines the authorization (or other random errors)
             try {
                 $authCode = filter_input(INPUT_GET, 'code', FILTER_SANITIZE_STRING);
                 $this->debug('Auth Code: ' . $authCode);
-                list($accessToken, $dropboxUserId) = $webAuth->finish($authCode);            
+                list($accessToken, $dropboxUserId) = $client->finishAuthorization($authCode);
                 $this->debug('Auth Token: ' . $accessToken . ', DropBox UserID: ' . $dropboxUserId);
 
                 $edd_options[$this->KEY_ACCESS_TOKEN] = $accessToken;
@@ -686,31 +678,16 @@ class EDDDropboxFileStore {
     private function getClient() {
         global $edd_options;
         $authToken = $edd_options[$this->KEY_ACCESS_TOKEN];
-        if ($authToken == null) {
-            return null;
+
+        // Load Dropbox API if not already loaded
+        if (!class_exists('cpm\\edd\\dbfs\\DropboxClientFactory')) {
+            require_once 'includes/dropbox-client/DropboxClientFactory.php';
+            \cpm\edd\dbfs\DropboxClientFactory::autoloader();
         }
 
-		// Load Dropbox API if not already loaded
-		if (!class_exists('Dropbox\\Client')) {
-			require_once 'dropbox-sdk/Dropbox/autoload.php';
-		}
-        
-        return new \Dropbox\Client($authToken, $this->clientIdentifier);
+        return \cpm\edd\dbfs\DropboxClientFactory::getDBFSClient($authToken);
     }
-    
-    /*
-     * Get an instance of the DropBox WebAuth utility used for authorization requests.
-     */
-    private function getWebAuth() {
-		// Load Dropbox API if not already loaded
-		if (!class_exists('Dropbox\\Client')) {
-			require_once 'dropbox-sdk/Dropbox/autoload.php';
-		}
 
-        $appInfo = new \Dropbox\AppInfo(convert_uudecode($this->db_1), convert_uudecode($this->db_2));
-        return new \Dropbox\WebAuthNoRedirect($appInfo, $this->clientIdentifier);
-    }
-    
     /*
      * Utility debug method that logs to Wordpress logs
      */
