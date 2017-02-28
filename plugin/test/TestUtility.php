@@ -41,7 +41,7 @@ class TestUtility
 
     public function loginToAdminSite() {
         $this->testRunner->url('http://local.wordpress.dev/wp-admin');
-        $this->waitForPageLoad('.login');
+        $this->waitForPageLoad('#user_login');
 
         // Fill in user credentials
         $this->testRunner->byId('user_login')->value('admin');
@@ -59,11 +59,25 @@ class TestUtility
         return null;
     }
 
-    public function waitForPageLoad($selector = '.wp-admin', $timeout = 10000) {
+    public function waitForPageLoad($selector = '.wp-admin', $timeout = 5000) {
+        //sleep(500);
         $testRunner = $this->testRunner;
         $testRunner->waitUntil(
             function() use ($testRunner, $selector, $timeout) {
                 if ($testRunner->byCssSelector($selector)) {
+                    return true;
+                }
+                return null;
+            },
+            $timeout
+        );
+    }
+    public function waitForPageLoadByXpath($xpath, $timeout = 5000) {
+        //sleep(500);
+        $testRunner = $this->testRunner;
+        $testRunner->waitUntil(
+            function() use ($testRunner, $xpath, $timeout) {
+                if ($testRunner->byXPath($xpath)) {
                     return true;
                 }
                 return null;

@@ -1,6 +1,5 @@
 <?php
 require_once __DIR__ . '\TestUtility.php';
-use PHPUnit_Extensions_Selenium2TestCase_Keys as Keys;
 
 class SetupTest extends PHPUnit_Extensions_Selenium2TestCase {
     /**
@@ -17,7 +16,6 @@ class SetupTest extends PHPUnit_Extensions_Selenium2TestCase {
     }
 
     public function testActivateDeactivate() {
-        $this->currentWindow()->maximize();
         $this->testUtility->loginToAdminSite();
         $this->byCssSelector('a[href="plugins.php"]')->click();
         $this->testUtility->waitForPageLoad();
