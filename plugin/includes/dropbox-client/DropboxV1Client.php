@@ -99,7 +99,8 @@ class DropboxV1Client implements IEDDDropboxClient
      */
     public function getFolderMetadata($folderPath)
     {
-        return $this->getClient()->getMetadataWithChildren($folderPath);
+        $response = $this->getClient()->getMetadataWithChildren($folderPath);
+        return $response['contents'];
     }
 
     /**
@@ -114,7 +115,8 @@ class DropboxV1Client implements IEDDDropboxClient
      */
     public function getTemporaryLink($filePath)
     {
-        return $this->getClient()->createTemporaryDirectLink($filePath);
+        list($url, $expires) = $this->getClient()->createTemporaryDirectLink($filePath);
+        return $url;
     }
 
     /**
@@ -122,9 +124,10 @@ class DropboxV1Client implements IEDDDropboxClient
      *
      * @param $filename string The name of the file
      * @param $fileStream resource The file to upload
+     * @param $fileSize int The size of the file being uploaded
      * @return mixed If successful an array containing the path to the file.  If failure then empty
      */
-    public function uploadFile($filename, $fileStream)
+    public function uploadFile($filename, $fileStream, $fileSize)
     {
         return $this->getClient()->uploadFile($filename, WriteMode::add(), $fileStream);
     }

@@ -6,6 +6,8 @@ namespace cpm\edd\dbfs;
  */
 class DropboxClientFactory
 {
+    private static $v2Prefix = "v2|";
+
     private static $clientIdentifier = 'edd-dbshare/1.0';
 
     // NOTE TO DEVELOPERS / USERS
@@ -18,11 +20,29 @@ class DropboxClientFactory
     public static function autoloader() {
         require_once 'IEDDDropboxClient.php';
         require_once 'DropboxV1Client.php';
+        require_once 'DropboxV2Client.php';
     }
 
     public static function getDBFSClient($authToken) {
         $key = convert_uudecode(DropboxClientFactory::$db_1);
         $secret = convert_uudecode(DropboxClientFactory::$db_2);
-        return new DropboxV1Client(DropboxClientFactory::$clientIdentifier, $key, $secret, $authToken);
+
+        // Use the V2 API
+        //if ($authToken == null || DropboxClientFactory::isV2AuthorizationToken($authToken)) {
+            return new DropboxV2Client(DropboxClientFactory::$clientIdentifier, $key, $secret, $authToken);
+        //}
+        //else {
+        //    return new DropboxV1Client(DropboxClientFactory::$clientIdentifier, $key, $secret, $authToken);
+        //}
+    }
+
+    /**
+     * Determines whether or not the authorization token is a V1 or V2 token
+     *
+     * @param $authToken string The authorization token
+     * @return bool Whether or not the authorization token is a V2 token
+     */
+    public static function isV2AuthorizationToken($authToken) {
+        return $authToken != null && substr($authToken, 0, strlen(DropboxClientFactory::$v2Prefix)) === DropboxClientFactory::$v2Prefix;
     }
 }

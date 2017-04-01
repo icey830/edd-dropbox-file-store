@@ -10,5 +10,5 @@ interface IEDDDropboxClient
     public function finishAuthorization($authorizationCode);
     public function getFolderMetadata($folderPath);
     public function getTemporaryLink($filePath);
-    public function uploadFile($filename, $fileStream);
+    public function uploadFile($filename, $fileStream, $fileSize);
 }

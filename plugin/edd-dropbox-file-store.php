@@ -30,7 +30,7 @@ class EDDDropboxFileStore {
      * @access      public
      * @since       1.0.0
      */
-    public function __construct() {   
+    public function __construct() {
         // Load the default language files
         add_action('init', array($this, 'dbfsInit'));
         
@@ -53,8 +53,19 @@ class EDDDropboxFileStore {
     }
 
     public function dbfsInit() {
+        $this->debug('Calling dbfsInit');
+        if ( ! defined( 'EDD_DBFS_PLUGIN_DIR' ) ) {
+            define( 'EDD_DBFS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+        }
+
         $edd_lang_dir = dirname( plugin_basename( __FILE__ ) ) . '/languages/';
         load_plugin_textdomain( 'edd_dbfs', false, $edd_lang_dir );
+
+        // Load Dropbox API if not already loaded
+        if (!class_exists('cpm\\edd\\dbfs\\DropboxClientFactory')) {
+            require_once EDD_DBFS_PLUGIN_DIR . '/includes/dropbox-client/DropboxClientFactory.php';
+            \cpm\edd\dbfs\DropboxClientFactory::autoloader();
+        }
     }
     
      /**
@@ -130,8 +141,7 @@ class EDDDropboxFileStore {
             $path = $this->PATH_ROOT;
         }
 
-        $metadata = $this->getPathMetadata($path);
-        $files = $metadata['contents'];
+        $files = $this->getPathMetadata($path);
 ?>
     <script type="text/javascript">
         //<![CDATA[
@@ -157,11 +167,11 @@ class EDDDropboxFileStore {
 <?php
             $baseURL = admin_url( 'media-upload.php?chromeless=1&post_id=' . absint(filter_input(INPUT_GET, 'post_id', FILTER_SANITIZE_NUMBER_INT)) . '&tab=dropbox_lib' );            
             if ($path != $this->PATH_ROOT) {
-                $lastSlashPos = strrpos($metadata['path'], '/', -1);
+                $lastSlashPos = strrpos($path, '/', -1);
                 
                 $folderURL = '/';
                 if ($lastSlashPos > 0) {
-                    $upFolder = substr($metadata['path'], 0, $lastSlashPos);    
+                    $upFolder = substr($path, 0, $lastSlashPos);
                     $folderURL = add_query_arg(array('path' => $upFolder), $baseURL);
                 }
                 else {
@@ -266,8 +276,7 @@ class EDDDropboxFileStore {
             $path = $this->PATH_ROOT;
         }
 
-        $metadata = $this->getPathMetadata($path);
-        $files = $metadata['contents'];
+        $files = $this->getPathMetadata($path);
 ?>
     <style>
 		.edd_errors { -webkit-border-radius: 2px; -moz-border-radius: 2px; border-radius: 2px; border: 1px solid #E6DB55; margin: 0 0 21px 0; background: #FFFFE0; color: #333; }
@@ -312,11 +321,11 @@ class EDDDropboxFileStore {
 <?php
             $baseURL = admin_url( 'media-upload.php?chromeless=1&post_id=' . absint(filter_input(INPUT_GET, 'post_id', FILTER_SANITIZE_NUMBER_INT)) . '&tab=dropbox_upload' );            
             if ($path != $this->PATH_ROOT) {
-                $lastSlashPos = strrpos($metadata['path'], '/', -1);
+                $lastSlashPos = strrpos($path, '/', -1);
                 
                 $folderURL = '/';
                 if ($lastSlashPos > 0) {
-                    $upFolder = substr($metadata['path'], 0, $lastSlashPos);    
+                    $upFolder = substr($path, 0, $lastSlashPos);
                     $folderURL = add_query_arg(array('path' => $upFolder), $baseURL);
                 }
                 else {
@@ -353,10 +362,11 @@ class EDDDropboxFileStore {
     }    
     
     public  function performFileUpload() {
-        $this->debug($_POST);
         if(!is_admin()) {
 			return;
 		}
+
+        $this->dbfsInit();
 
 		$uploadCapability = apply_filters( 'edd_dbfs_upload_cap', 'edit_products' );
 		if(!current_user_can($uploadCapability)) {
@@ -372,10 +382,11 @@ class EDDDropboxFileStore {
             $path = $path . '/';
         }
         $filename = $path . $_FILES['edd_dbfs_file']['name'];
+        $fileSize = $_FILES['edd_dbfs_file']['size'];
         $this->debug('Upload path: ' . $filename);
         
         try {
-            $resultFilename = $this->uploadFile($filename, $_FILES['edd_dbfs_file']['tmp_name']);
+            $resultFilename = $this->uploadFile($filename, $_FILES['edd_dbfs_file']['tmp_name'], $fileSize);
             if($resultFilename != null) {            
                 $redirectURL = add_query_arg(
                     array(
@@ -397,12 +408,12 @@ class EDDDropboxFileStore {
         }
 	}
     
-    private function uploadFile($filename, $filepath) {
+    private function uploadFile($filename, $filepath, $fileSize) {
         $dbClient = $this->getClient();
-       
+
         $inStream = @fopen($filepath, 'rb');
         
-        $result = $dbClient->uploadFile($filename, $inStream);
+        $result = $dbClient->uploadFile($filename, $inStream, $fileSize);
         $this->debug('Upload result: ' . print_r($result, true));
         
         if ($result == null || !array_key_exists('path', $result)) { return null; }
@@ -435,7 +446,7 @@ class EDDDropboxFileStore {
         $path = '/' . substr($filename, strlen($this->URL_PREFIX));
         
         $dbClient = $this->getClient();
-        list($url, $expires) = $dbClient->getTemporaryLinkin($path);
+        $url = $dbClient->getTemporaryLink($path);
         $this->debug('Download URL: ' . $url);
         
         if (array_key_exists($this->KEY_FORCE_DL, $edd_options) && $edd_options[$this->KEY_FORCE_DL]) {
@@ -614,7 +625,25 @@ class EDDDropboxFileStore {
             <?php
             echo ob_get_clean();
         }
-        
+
+//        if (!\cpm\edd\dbfs\DropboxClientFactory::isV2AuthorizationToken($authToken)) {
+//            $updateToken_url = wp_nonce_url(
+//                add_query_arg(
+//                    array(
+//                        'action' => 'upgradeToken',
+//                        'page' => $this->_hook
+//                    ),
+//                    get_home_url() . '/'
+//                ),
+//                'upgradeToken'
+//            );
+//
+//            ob_start();
+//            ?>
+<!--            <a id="edd-dbfs-upgrade-token" href="--><?php //echo esc_url( $updateToken_url );?><!--" class="button button-large button-secondary delete">--><?php //_e('Update to Dropbox V2 API', 'edd_dbfs') ?><!--</a>-->
+<!--            --><?php
+//            echo ob_get_clean();
+//        }
     }
 
     public function handleAuthActions() {
@@ -662,6 +691,10 @@ class EDDDropboxFileStore {
             
             wp_safe_redirect($this->getSettingsUrl());
         }
+//        else if ('upgradeToken' == $actionParam) {
+//            $authToken = $edd_options[$this->KEY_ACCESS_TOKEN];
+//            $dbClient = cpm\edd\dbfs\DropboxClientFactory::getDBFSClient($authToken);
+//        }
     }
     
     /*
@@ -674,17 +707,12 @@ class EDDDropboxFileStore {
     /***************************************************************************
      * Generic functions
      **************************************************************************/
-    
+
     private function getClient() {
         global $edd_options;
         $authToken = $edd_options[$this->KEY_ACCESS_TOKEN];
 
-        // Load Dropbox API if not already loaded
-        if (!class_exists('cpm\\edd\\dbfs\\DropboxClientFactory')) {
-            require_once 'includes/dropbox-client/DropboxClientFactory.php';
-            \cpm\edd\dbfs\DropboxClientFactory::autoloader();
-        }
-
+        $this->debug("Calling getClient");
         return \cpm\edd\dbfs\DropboxClientFactory::getDBFSClient($authToken);
     }
 

@@ -9,7 +9,18 @@ module.exports = function(grunt) {
     grunt.initConfig({
         globalConfig: globalConfig,
         pkg: grunt.file.readJSON('package.json'),
-        clean: ['bin'],
+        clean: {
+            build: ['bin'],
+            postBuild: ['bin/edd-dropbox-file-store/composer.*']
+        },
+        composer: {
+            plugin: {
+                options: {
+                    flags: ['no-dev'],
+                    cwd: '<%= globalConfig.dest %>'
+                }
+            }
+        },
         compress: {
             plugin: {
                 options: {
@@ -24,10 +35,10 @@ module.exports = function(grunt) {
         copy: {
             main: {
                 files: [
-                    {expand: true, src: ['*.php'], dest: '<%= globalConfig.dest %>', filter: 'isFile'},
+                    { expand: true, src: ['*.php'], dest: '<%= globalConfig.dest %>', filter: 'isFile'},
+                    { expand: true, src: ['composer.json'], dest: '<%= globalConfig.dest %>', filter: 'isFile'},
                     { expand: true, src: ['includes/**'], dest: '<%= globalConfig.dest %>', filter: 'isFile' },
                     { expand: true, src: ['dropbox-v1-sdk/**'], dest: '<%= globalConfig.dest %>', filter: 'isFile' },
-                    { expand: true, src: ['dropbox-v2-sdk/**'], dest: '<%= globalConfig.dest %>', filter: 'isFile' }
                 ]
             }
         },
@@ -53,6 +64,8 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks('grunt-mkdir');
     grunt.loadNpmTasks('grunt-text-replace');
+    grunt.loadNpmTasks('grunt-composer');
 
-    grunt.registerTask('default', ['clean', 'mkdir:plugin', 'copy', 'replace:version', 'compress:plugin']);
+    grunt.registerTask('default', ['clean:build', 'mkdir:plugin', 'copy', 'replace:version', 'composer:plugin:install', 'clean:postBuild', 'compress:plugin']);
+    grunt.registerTask('build', ['clean:build', 'mkdir:plugin', 'copy', 'replace:version', 'clean:postBuild', 'compress:plugin']);
 };
