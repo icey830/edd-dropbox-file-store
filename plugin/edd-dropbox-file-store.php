@@ -13,6 +13,7 @@ if(class_exists('EDD_License') && is_admin() ) {
     $license = new EDD_License( __FILE__, 'EDD Dropbox File Store', '0.0.0', 'Adam Kreiss' );
 }
 
+/** @noinspection PhpInconsistentReturnPointsInspection */
 class EDDDropboxFileStore {
     
     private $_debug = false;
@@ -20,7 +21,6 @@ class EDDDropboxFileStore {
     private $_hook = 'edd-dbfs';
     
     private $KEY_ACCESS_TOKEN = 'edd_dbfs_authToken';
-    private $KEY_FORCE_DL   = 'edd_force_dl';
     private $PATH_ROOT = '/';
     private $URL_PREFIX = 'edd-dbfs://';
     
@@ -63,6 +63,7 @@ class EDDDropboxFileStore {
 
         // Load Dropbox API if not already loaded
         if (!class_exists('cpm\\edd\\dbfs\\DropboxClientFactory')) {
+            /** @noinspection PhpIncludeInspection */
             require_once EDD_DBFS_PLUGIN_DIR . '/includes/dropbox-client/DropboxClientFactory.php';
             \cpm\edd\dbfs\DropboxClientFactory::autoloader();
         }
@@ -86,7 +87,8 @@ class EDDDropboxFileStore {
     
     public function setupAdminJS() {
 		?>
-		<script type="text/javascript">
+		<!--suppress ALL -->
+        <script type="text/javascript">
 			//<![CDATA[
 			jQuery(function($){
 				$('body').on('click', '.edd_upload_file_button', function() {
@@ -120,7 +122,8 @@ class EDDDropboxFileStore {
         }
         return $default_tabs; 
     }
-    
+
+    /** @noinspection PhpInconsistentReturnPointsInspection */
     public function registerDBLibTab() {
         if (!empty($_POST)) {
             $error = media_upload_form_handler();
@@ -132,7 +135,7 @@ class EDDDropboxFileStore {
         wp_iframe(array($this, 'renderDBFilesTab'));
     }
     
-    public function renderDBFilesTab( $type = 'file', $errors = null, $id = null ) {
+    public function renderDBFilesTab() {
         media_upload_header();
         wp_enqueue_style('media');
 
@@ -159,7 +162,8 @@ class EDDDropboxFileStore {
         //]]>
     </script>
     <div style="background-color: #fff; margin-top: -21px; padding-left: 20px; width: inherit;" id="media-items">
-        <h3 class="media-title" style="padding-top: 21px;"><?php __('Select a file from Dropbox', 'edd_dbfs'); ?></h3>
+        <h3 class="media-title" style="padding-top: 21px;"><?php /** @noinspection SqlDialectInspection */ /** @noinspection SqlNoDataSourceInspection */
+            __('Select a file from Dropbox', 'edd_dbfs'); ?></h3>
 <?php
         if( is_array( $files ) ) {
 ?>
@@ -169,7 +173,7 @@ class EDDDropboxFileStore {
             if ($path != $this->PATH_ROOT) {
                 $lastSlashPos = strrpos($path, '/', -1);
                 
-                $folderURL = '/';
+                $folderURL = null;
                 if ($lastSlashPos > 0) {
                     $upFolder = substr($path, 0, $lastSlashPos);
                     $folderURL = add_query_arg(array('path' => $upFolder), $baseURL);
@@ -199,7 +203,7 @@ class EDDDropboxFileStore {
                 }
                 
                 $filePath = $this->getFilenameFromDBPath($file['path'], false);
-                $this->outputContentLI($file['path'], $filePath, null, false);
+                $this->outputContentLI($file['path'], $filePath);
             }
 ?>      
         </ul>
@@ -256,7 +260,8 @@ class EDDDropboxFileStore {
     /***************************************************************************
      * EDD DBShare Media Upload Integration
      **************************************************************************/
-    
+
+    /** @noinspection PhpInconsistentReturnPointsInspection */
     public function registerDBUploadTab() {
         if (!empty($_POST)) {
             $error = media_upload_form_handler();
@@ -268,7 +273,7 @@ class EDDDropboxFileStore {
         wp_iframe(array($this, 'renderDBUploadTab'));
     }
     
-    public function renderDBUploadTab( $type = 'file', $errors = null, $id = null ) {
+    public function renderDBUploadTab() {
         wp_enqueue_style('media');
 
         $path = filter_input(INPUT_GET, 'path', FILTER_SANITIZE_STRING);
@@ -294,7 +299,8 @@ class EDDDropboxFileStore {
         //]]>
     </script>
     <div style="background-color: #fff; margin-top: -21px; padding-left: 20px; width: inherit;" id="media-items">
-        <h3 class="media-title" style="padding-top: 21px;"><?php _e('Select a folder from Dropbox to upload to:', 'edd_dbfs'); ?></h3>
+        <h3 class="media-title" style="padding-top: 21px;"><?php /** @noinspection SqlDialectInspection */ /** @noinspection SqlNoDataSourceInspection */
+            _e('Select a folder from Dropbox to upload to:', 'edd_dbfs'); ?></h3>
         <span class="media-title" style="padding-top: 21px;"><strong><?php _e('Current directory: ', 'edd_dbfs') ?></strong><?php echo $path ?></span>
         <?php 
             $successFlag = filter_input(INPUT_GET, 'edd_dbfs_success', FILTER_UNSAFE_RAW);
@@ -323,7 +329,7 @@ class EDDDropboxFileStore {
             if ($path != $this->PATH_ROOT) {
                 $lastSlashPos = strrpos($path, '/', -1);
                 
-                $folderURL = '/';
+                $folderURL = null;
                 if ($lastSlashPos > 0) {
                     $upFolder = substr($path, 0, $lastSlashPos);
                     $folderURL = add_query_arg(array('path' => $upFolder), $baseURL);
@@ -353,7 +359,7 @@ class EDDDropboxFileStore {
         $formAction = add_query_arg(array( 'edd_action' => 'dbfs_upload' ), admin_url());
 ?>
         <form enctype="multipart/form-data" method="post" action="<?php echo esc_attr($formAction); ?>">
-            <p><input type="file" name="edd_dbfs_file" style="padding-left: 0px;"/></p>
+            <p><input type="file" name="edd_dbfs_file" style="padding-left: 0;"/></p>
             <p><input type="submit" class="button-secondary" value="<?php _e('Upload', 'edd_dbfs') ?>"/></p>
             <input type="hidden" name="edd_dbfs_path" value="<?php echo $path ?>" />
         </form>
@@ -423,7 +429,15 @@ class EDDDropboxFileStore {
     /***************************************************************************
      * EDD DBShare Media Download Integration
      **************************************************************************/
-     
+
+    /**
+     * Generate a download URL.
+     *
+     * @param $file string The file the download URL links to
+     * @param $downloadFiles array The files available for download
+     * @param $fileKey string The key to this file
+     * @return string A temporary download URL
+     */
     public function generateUrl($file, $downloadFiles, $fileKey) {        
         $fileData = $downloadFiles[$fileKey];
         $filename = $fileData['file'];
@@ -438,8 +452,6 @@ class EDDDropboxFileStore {
     }
     
     private function getDownloadURL($filename) {
-        global $edd_options;
-        
         $this->debug('Download filename: ' . $filename);
         
         // Remove the prefix
@@ -448,11 +460,6 @@ class EDDDropboxFileStore {
         $dbClient = $this->getClient();
         $url = $dbClient->getTemporaryLink($path);
         $this->debug('Download URL: ' . $url);
-        
-        if (array_key_exists($this->KEY_FORCE_DL, $edd_options) && $edd_options[$this->KEY_FORCE_DL]) {
-            $this->debug('Forcing download');
-            $url = add_query_arg('dl', '1', $url);
-        }
 
         return $url;
     }
@@ -467,7 +474,7 @@ class EDDDropboxFileStore {
      * @param $paymentID int The ID of the payment used to purchase the download
      * @param $args array An array of download parameters
      */
-    public function checkForDBFSDownload($downloadID, $email, $paymentID, $args) {
+    public function checkForDBFSDownload($downloadID, /** @noinspection PhpUnusedParameterInspection */$email, /** @noinspection PhpUnusedParameterInspection */$paymentID, $args) {
 	    if ( isset( $args['file_key'] ) ) {
 		    $fileKey = $args['file_key'];
 		    $downloadFiles = edd_get_download_files( $downloadID );
@@ -483,11 +490,11 @@ class EDDDropboxFileStore {
 	    }
     }
 
-    public function disableSymLink( $symlink ) {
+    public function disableSymLink( /** @noinspection PhpUnusedParameterInspection */$symlink ) {
         return false;
     }
 
-    public function setFileDownloadMethod( $method ) {
+    public function setFileDownloadMethod( /** @noinspection PhpUnusedParameterInspection */$method ) {
         return 'redirect';
     }
      
@@ -495,8 +502,11 @@ class EDDDropboxFileStore {
      * EDD DBShare Settings
      **************************************************************************/
     
-    /*
+    /**
     * Adds the settings to the Add-On section
+     *
+     * @param $settings array The array of settings configured for EDD
+     * @return array A merged array of the EDD settings plus the DBFS settings
     */
     public function addSettings($settings) {
         $dbfs_settings = array(
@@ -510,13 +520,6 @@ class EDDDropboxFileStore {
             array(
                 'id' => 'dbfs_authorization',
                 'type' => 'hook'
-            ),
-            array (
-                'id'     => $this->KEY_FORCE_DL,
-                'name'   => 'Force Download of Files',
-                'desc'   => 'This will force the browser to save the download rather than opening it within the browser (such as video or audio files)',
-                'type'   => 'checkbox',
-                'size'   => 'regular'
             )
        );
 

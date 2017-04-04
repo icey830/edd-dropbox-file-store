@@ -79,6 +79,7 @@ class SetupTest extends PHPUnit_Extensions_Selenium2TestCase {
 
         // Need to log in
         $this->testUtility->waitForPageLoad('.login-button');
+        sleep(1);
         $email = $this->testUtility->getDisplayedElementByName('login_email');
         $email->click();
         $email->value('adam.kreiss+test@gmail.com');
@@ -92,6 +93,7 @@ class SetupTest extends PHPUnit_Extensions_Selenium2TestCase {
         $this->assertEquals('API Request Authorization - Dropbox', $this->title(), 'Incorrect title for Dropbox Auth window');
         $this->assertEquals('Easy Digital Downloads - File Store would like access to the files and folders in your Dropbox. Learn more',
             $this->byId('auth-text')->text(), 'Incorrect permission ask on Dropbox Auth window');
+        sleep(1);
         $this->byName('allow_access')->click();
         $this->testUtility->waitForPageLoad('#auth-code');
 

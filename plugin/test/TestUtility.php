@@ -46,7 +46,7 @@ class TestUtility
 
         // Fill in user credentials
         $this->testRunner->byId('user_login')->click();
-        sleep(.5);
+        sleep(1);
         $this->testRunner->byId('user_login')->value('admin');
         $this->testRunner->byId('user_pass')->click();
         sleep(.5);
@@ -64,8 +64,8 @@ class TestUtility
         return null;
     }
 
-    public function waitForPageLoad($selector = '.wp-admin', $timeout = 5000) {
-        //sleep(500);
+    public function waitForPageLoad($selector = '.wp-admin', $timeout = 50000) {
+        sleep(.5);
         $testRunner = $this->testRunner;
         $testRunner->waitUntil(
             function() use ($testRunner, $selector, $timeout) {
