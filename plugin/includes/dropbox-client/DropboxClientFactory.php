@@ -6,8 +6,6 @@ namespace cpm\edd\dbfs;
  */
 class DropboxClientFactory
 {
-    private static $v2Prefix = "v2|";
-
     private static $clientIdentifier = 'edd-dbshare/1.0';
 
     // NOTE TO DEVELOPERS / USERS

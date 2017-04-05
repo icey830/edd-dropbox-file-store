@@ -451,7 +451,7 @@ class EDDDropboxFileStore {
         return $this->getDownloadURL($filename);
     }
     
-    private function getDownloadURL($filename) {
+    public function getDownloadURL($filename) {
         $this->debug('Download filename: ' . $filename);
         
         // Remove the prefix
