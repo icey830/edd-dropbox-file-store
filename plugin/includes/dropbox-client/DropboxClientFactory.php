@@ -29,9 +29,11 @@ class DropboxClientFactory
         $secret = convert_uudecode(DropboxClientFactory::$db_2);
 
         $useAPIV1 = false;
-        /** @noinspection PhpUndefinedConstantInspection */
-        if (defined(EDD_DBFS_USE_API_V1) && EDD_DBFS_USE_API_V1) {
-            $useAPIV1 = true;
+        if (defined('EDD_DBFS_USE_API_V1')) {
+            /** @noinspection PhpUndefinedConstantInspection */
+            if (EDD_DBFS_USE_API_V1) {
+                $useAPIV1 = true;
+            }
         }
 
         // Use the V2 API

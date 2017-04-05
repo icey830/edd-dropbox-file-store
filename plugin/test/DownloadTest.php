@@ -38,7 +38,6 @@ class DownloadTest extends PHPUnit_Extensions_Selenium2TestCase {
 
         // Make sure we've loaded the file correctly
         $fileURL = $this->url();
-        $this->assertStringStartsWith('https://dl.dropboxusercontent.com', $fileURL, "File link didn't go to Dropbox");
-        $this->assertStringEndsWith('/file1.txt', $fileURL, "File link didn't link to the expected file");
+        $this->assertEquals('http://local.wordpress.dev/checkout/purchase-confirmation/', $fileURL, "File link (Force Download) shouldn't have changed the URL");
     }
 }
