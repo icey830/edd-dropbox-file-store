@@ -40,6 +40,12 @@ class MediaTest extends PHPUnit_Extensions_Selenium2TestCase {
         $this->byXPath('//a[@data-dbfs-filename=\'file1.txt\']');
         $this->byXPath('//span[contains(.,\'file1.txt\')]');
 
+        // Navigate in and out of the folder containing special characters
+        $this->byXPath('//span[contains(.,\'/-+-subfolderWithSymbol\')]')->click();
+        $this->testUtility->waitForPageLoadByXpath('//span[contains(.,\'/testSub\')]');
+        $this->byXPath('//span[contains(.,\'../\')]')->click();
+        $this->testUtility->waitForPageLoadByXpath('//span[contains(.,\'/subfolder\')]');
+
         // Navigate to the sub folder and select file2.txt
         $this->byXPath('//span[contains(.,\'/subfolder\')]')->click();
         $this->testUtility->waitForPageLoadByXpath('//span[contains(.,\'file2.txt\')]');
@@ -74,6 +80,12 @@ class MediaTest extends PHPUnit_Extensions_Selenium2TestCase {
         $this->testUtility->waitForPageLoad('iframe[src$="tab=dropbox_upload"]');
         $mediaFrame = $this->byCssSelector('iframe[src$="tab=dropbox_upload"]');
         $this->frame($mediaFrame);
+
+        // Navigate in and out of the folder containing special characters
+        $this->byXPath('//span[contains(.,\'/-+-subfolderWithSymbol\')]')->click();
+        $this->testUtility->waitForPageLoadByXpath('//span[contains(.,\'/testSub\')]');
+        $this->byXPath('//span[contains(.,\'../\')]')->click();
+        $this->testUtility->waitForPageLoadByXpath('//span[contains(.,\'/subfolder\')]');
 
         // Navigate to the upload folder and upload a test file
         $this->byXPath('//span[contains(.,\'/upload\')]')->click();

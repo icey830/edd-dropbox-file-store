@@ -191,8 +191,8 @@ class EDDDropboxFileStore {
                     continue; // Ignore non-folders
                 }
                 $filePath = $this->getFilenameFromDBPath($file['path'], true);
-                
-                $fileURL = add_query_arg(array('path' => $file['path']), $baseURL);
+
+                $fileURL = add_query_arg(array('path' => urlencode($file['path'])), $baseURL);
                 $this->outputFolderLI($filePath, $fileURL);
             } 
            
@@ -203,7 +203,7 @@ class EDDDropboxFileStore {
                 }
                 
                 $filePath = $this->getFilenameFromDBPath($file['path'], false);
-                $this->outputContentLI($file['path'], $filePath);
+                $this->outputContentLI($file['path'], urlencode($filePath));
             }
 ?>      
         </ul>
@@ -347,8 +347,8 @@ class EDDDropboxFileStore {
                     continue; // Ignore non-folders
                 }
                 $filePath = $this->getFilenameFromDBPath($file['path'], true);
-                
-                $fileURL = add_query_arg(array('path' => $file['path']), $baseURL);
+
+                $fileURL = add_query_arg(array('path' => urlencode($file['path'])), $baseURL);
                 $this->outputFolderLI($filePath, $fileURL);
             } 
 ?>      
