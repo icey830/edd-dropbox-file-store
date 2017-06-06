@@ -17,7 +17,7 @@ module.exports = function(grunt) {
             plugin: {
                 options: {
                     flags: ['no-dev'],
-                    cwd: '<%= globalConfig.dest %>'
+                    cwd: '<%= globalConfig.dest %>',
                 }
             }
         },
@@ -38,7 +38,6 @@ module.exports = function(grunt) {
                     { expand: true, src: ['*.php'], dest: '<%= globalConfig.dest %>', filter: 'isFile'},
                     { expand: true, src: ['composer.json'], dest: '<%= globalConfig.dest %>', filter: 'isFile'},
                     { expand: true, src: ['includes/**'], dest: '<%= globalConfig.dest %>', filter: 'isFile' },
-                    { expand: true, src: ['dropbox-v1-sdk/**'], dest: '<%= globalConfig.dest %>', filter: 'isFile' },
                 ]
             }
         },

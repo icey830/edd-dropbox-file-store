@@ -20,7 +20,7 @@ class ResetTestListener implements PHPUnit_Framework_TestListener
     public function startTestSuite(PHPUnit_Framework_TestSuite $suite) {
         if ($suite->getName() == "Standard Test Suite") {
             echo "Restoring database";
-            system("vagrant ssh 00a6b5e -c \"/usr/local/bin/wp db import /srv/www/wordpress-default/public_html/edd-dbfs-db.sql --path=/srv/www/wordpress-default/public_html\"");
+            system("C:\\Freelance\\edd-dropbox-file-store-plugin\\plugin\\test\\RestoreDB.bat");
         }
     }
 

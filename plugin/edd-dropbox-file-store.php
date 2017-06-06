@@ -77,12 +77,19 @@ class EDDDropboxFileStore {
 	  */
 	public static function activation() {
         // Check for required PHP version
-        if (version_compare(PHP_VERSION, '5.3', '<'))
+        if (version_compare(PHP_VERSION, '5.6', '<'))
         {
             deactivate_plugins( basename( __FILE__ ) );
-            wp_die('<p>The <strong>Easy Digital Downloads - Dropbox File Store</strong> plugin requires PHP 5.3 or greater.  You are currently running PHP ' 
+            wp_die('<p>The <strong>Easy Digital Downloads - Dropbox File Store</strong> plugin requires PHP 5.6 or greater.  You are currently running PHP '
                     . PHP_VERSION . '</p>','Plugin Activation Error',  array( 'response'=>200, 'back_link'=>TRUE ) );
         }
+    }
+
+    public static function addPHPVersionWarning() {
+        $class = 'notice notice-error';
+        $message = __( 'The Easy Digital Downloads - File Store for Dropbox plugin requires PHP 5.6+.  Please upgrade to a supported verion.', 'edd_dbfs' );
+
+        printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), esc_html( $message ) );
     }
     
     public function setupAdminJS() {
@@ -682,7 +689,10 @@ class EDDDropboxFileStore {
             }
             catch (Exception $e) {
                 $this->debug('Error occurred while authorizing account: ' . $e->getMessage());
-                wp_die(sprintf(__( 'An error occurred while attempting to complete the authorization process with Dropbox using the code you provided: %d', 'edd_dbfs_file'), $e->getMessage()), __( 'Error', 'edd_dbfs_file' ), array( 'back_link' => true ));
+                if (strpos($e->getMessage(), 'cURL error 60') !== false || strpos($e->getMessage(), 'SSL CA bundle not found') !== false) {
+                    wp_die(__('Unable to communicate with Dropbox because of a missing certificate bundle.  You may want to contact your hosting provider to ensure a global certificate bundle is configured.', 'edd_dbfs_file'), __( 'Error', 'edd_dbfs_file' ), array( 'back_link' => true ));
+                }
+                wp_die(sprintf(__( 'An error occurred while attempting to complete the authorization process with Dropbox using the code you provided: %s', 'edd_dbfs_file'), $e->getMessage()), __( 'Error', 'edd_dbfs_file' ), array( 'back_link' => true ));
             }
             wp_safe_redirect($this->getSettingsUrl());
             exit;
@@ -694,10 +704,6 @@ class EDDDropboxFileStore {
             
             wp_safe_redirect($this->getSettingsUrl());
         }
-//        else if ('upgradeToken' == $actionParam) {
-//            $authToken = $edd_options[$this->KEY_ACCESS_TOKEN];
-//            $dbClient = cpm\edd\dbfs\DropboxClientFactory::getDBFSClient($authToken);
-//        }
     }
     
     /*
@@ -713,8 +719,11 @@ class EDDDropboxFileStore {
 
     private function getClient() {
         global $edd_options;
-        $authToken = $edd_options[$this->KEY_ACCESS_TOKEN];
 
+        $authToken = null;
+        if (array_key_exists($this->KEY_ACCESS_TOKEN, $edd_options)) {
+            $authToken = $edd_options[$this->KEY_ACCESS_TOKEN];
+        }
         $this->debug("Calling getClient");
         return \cpm\edd\dbfs\DropboxClientFactory::getDBFSClient($authToken);
     }
@@ -740,4 +749,9 @@ class EDDDropboxFileStore {
  */
 register_activation_hook( __FILE__, array( 'EDDDropboxFileStore', 'activation' ) );
 
-new EDDDropboxFileStore();
+if (version_compare(PHP_VERSION, '5.6', '<')) {
+    add_action('admin_notices', array('EDDDropboxFileStore', 'addPHPVersionWarning'));
+}
+else {
+    new EDDDropboxFileStore();
+}
