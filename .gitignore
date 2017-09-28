@@ -1,4 +1,3 @@
-/plugin/nbproject/private/
-versions/
-documentation/Dropbox File Store Documentation Images/
-documentation/Dropbox File Store Documentation Images.zip
+composer.lock
+npm-debug.log
+node_modules
