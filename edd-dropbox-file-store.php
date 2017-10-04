@@ -44,6 +44,9 @@ class EDDDropboxFileStore {
         // Media hooks
         add_filter('media_upload_tabs', array($this, 'addDropboxTabs'));
         add_filter('edd_requested_file', array($this, 'generateUrl'), 11, 3);
+        if( version_compare( EDD_VERSION, '2.8.8', '>=' ) ) {
+            add_filter('edd_requested_file_name', array($this, 'setFileName'), 10, 2);
+        }
         add_filter('edd_dbfs_upload'  , array($this, 'performFileUpload'), 10, 2);
 
 		add_action('admin_head', array($this, 'setupAdminJS' ) );
@@ -446,6 +449,7 @@ class EDDDropboxFileStore {
      * @return string A temporary download URL
      */
     public function generateUrl($file, $downloadFiles, $fileKey) {
+
         $fileData = $downloadFiles[$fileKey];
         $filename = $fileData['file'];
 
@@ -456,6 +460,24 @@ class EDDDropboxFileStore {
 
         add_filter( 'edd_file_download_method', array( $this, 'setFileDownloadMethod' ) );
         return $this->getDownloadURL($filename);
+    }
+    /**
+     * Sets the name of the file passed to the browser for download.
+     *
+     * Forces the name to no more than 20 characters
+     *
+     * @param $name string Basename of the file
+     * @param $args array Arguments, including download ID, payment ID, file key and more
+     * @return string Name to send to the browser
+     */
+    public function setFileName($name, $args) {
+
+        $files = edd_get_download_files( $args['download'] );
+        if( isset( $files[ $args[ 'file_key'] ][ 'name'] ) ) {
+            $name = $files[ $args[ 'file_key'] ][ 'name' ];
+        }
+
+        return $name;
     }
 
     public function getDownloadURL($filename) {
